@@ -1,0 +1,19 @@
+apiVersion: jenkins.io/v1
+kind: App
+metadata:
+    name: {{ template "fullname" . }}
+    labels:
+        jenkins.io/app-type: pipeline-extension
+        chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+spec:
+    pipelineExtension:
+        name: SonarScanner
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        command: /jx-app-sonar-scanner
+        args:
+            - configure
+            - "-s {{ .Values.sqServer }}"
+            - "-k {{ .Values.apiKey }}"
+            - "-p {{ .Values.scanonpreview }}"
+            - "-r {{ .Values.scanonrelease }}"
+

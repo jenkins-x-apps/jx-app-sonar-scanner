@@ -1,0 +1,30 @@
+apiVersion: skaffold/v1alpha2
+kind: Config
+build:
+  tagPolicy:
+    envTemplate:
+      template: "{{.DOCKER_REGISTRY}}/{{.IMAGE_NAME}}:{{.VERSION}}"
+  artifacts:
+  - imageName: tdcox/jx-app-sonar-scanner
+    workspace: .
+    docker: {}
+  local: {}
+deploy:
+  kubectl:
+    manifests:
+profiles:
+- name: dev
+  build:
+    tagPolicy:
+      envTemplate:
+        template: "{{.DOCKER_REGISTRY}}/{{.IMAGE_NAME}}:{{.DIGEST_HEX}}"
+    artifacts:
+    - imageName: tdcox/jx-app-sonar-scanner
+  deploy:
+    helm:
+      releases:
+      - name: jx-app-sonar-scanner
+        chartPath: charts/jx-app-sonar-scanner
+        setValueTemplates:
+          image.repository: "{{.DOCKER_REGISTRY}}/{{.IMAGE_NAME}}"
+          image.tag: "{{.DIGEST_HEX}}"

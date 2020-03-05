@@ -1,0 +1,31 @@
+{
+  "$id": "https://example.com/address.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "values.schema.json for jx-app-sonar-scanner",
+  "type": "object",
+  "properties": {
+    "sqServer": {
+      "type": "string",
+      "default": "http://jx-sonarqube.sonarqube.svc.cluster.local:9000",
+      "title": "Enter the URL of your Sonarqube server instance including protocol and port",
+      "description": "This is the URL of the Sonarqube server you wish to scan with."
+    },
+    "apiKey": {
+      "type": "string",
+      "title": "Enter your Sonarqube user token, if required by your server instance",
+      "description": "This is the user token for the pipeline user account that has been created on the Sonarqube server if anonymous access is not permitted."
+    },
+    "scanonpreview": {
+      "type": "boolean",
+      "default": "true",
+      "title": "Scan Preview Builds?",
+      "description": "Run Sonarqube scans against all preview builds."
+    },
+    "scanonrelease": {
+      "type": "boolean",
+      "default": "true",
+      "title": "Scan Release Builds?",
+      "description": "Run Sonarqube scans against all release builds."
+    }
+  }
+}

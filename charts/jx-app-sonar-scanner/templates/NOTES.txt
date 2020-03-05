@@ -1,0 +1,7 @@
+
+To check the status of {{ .Chart.Name }}, try:
+
+    $ jx get app  {{ .Chart.Name }}
+
+Once installed {{ .Chart.Name }} will scan each build with SonarQube.
+
