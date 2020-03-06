@@ -74,13 +74,15 @@ release: linux test check update-release-version ## skaffold-build detach-and-re
 
 .PHONY: update-release-version
 update-release-version: ## Updates the release version
-git clone https://github.com/jenkins-x/jenkins-x-versions.git
-BUILDER_VERSION=$(jx step get dependency-version --host=github.com --owner=jenkins-x --repo=jenkins-x-builders --short --dir jenkins-x-versions)
 ifeq ($(OS),darwin)
+	git clone https://github.com/jenkins-x/jenkins-x-versions.git
+	BUILDER_VERSION=$(jx step get dependency-version --host=github.com --owner=jenkins-x --repo=jenkins-x-builders --short --dir jenkins-x-versions)
 	sed -i "" -e "s/version:.*/version: $(VERSION)/" ./charts/jx-app-sonar-scanner/Chart.yaml
 	sed -i "" -e "s/tag: .*/tag: $(VERSION)/" ./charts/jx-app-sonar-scanner/values.yaml
 	sed -i "" -e "s/\(FROM gcr\.io\/jenkinsxio\/builder-go-maven\:\).*/\1${BUILDER_VERSION}/" Dockerfile
 else ifeq ($(OS),linux)
+	git clone https://github.com/jenkins-x/jenkins-x-versions.git
+	BUILDER_VERSION=$(jx step get dependency-version --host=github.com --owner=jenkins-x --repo=jenkins-x-builders --short --dir jenkins-x-versions)
 	sed -i -e "s/version:.*/version: $(VERSION)/" ./charts/jx-app-sonar-scanner/Chart.yaml
 	sed -i -e "s/tag: .*/tag: $(VERSION)/" ./charts/jx-app-sonar-scanner/values.yaml
 	sed -i -e "s/\(FROM gcr\.io\/jenkinsxio\/builder-go-maven\:\).*/\1${BUILDER_VERSION}/" Dockerfile
