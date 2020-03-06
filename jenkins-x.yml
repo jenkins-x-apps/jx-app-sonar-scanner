@@ -24,6 +24,7 @@ pipelineConfig:
               - command: make
                 args:
                   - all
+                name: make-build
     release:
       pipeline:
         agent:
@@ -44,5 +45,10 @@ pipelineConfig:
             steps:
               - command: make
                 args:
+                  - all
+                name: make-build
+              - command: make
+                args:
                   - release
                   - DOCKER_REGISTRY=docker.io
+                name: make-release
