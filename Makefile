@@ -68,18 +68,22 @@ help: ## Prints this help
 	@grep -E '^[^.]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-40s\033[0m %s\n", $$1, $$2}'	
 
 .PHONY: release
-release: linux test check update-release-version skaffold-build detach-and-release ## Creates a release
+release: linux test check update-release-version ## skaffold-build detach-and-release ## Creates a release
 	cd charts/jx-app-sonar-scanner && jx step helm release
 	jx step changelog --version v$(VERSION) -p $$(git merge-base $$(git for-each-ref --sort=-creatordate --format='%(objectname)' refs/tags | sed -n 2p) master) -r $$(git merge-base $$(git for-each-ref --sort=-creatordate --format='%(objectname)' refs/tags | sed -n 1p) master)
 
 .PHONY: update-release-version
 update-release-version: ## Updates the release version
+git clone https://github.com/jenkins-x/jenkins-x-versions.git
+BUILDER_VERSION=$(jx step get dependency-version --host=github.com --owner=jenkins-x --repo=jenkins-x-builders --short --dir jenkins-x-versions)
 ifeq ($(OS),darwin)
 	sed -i "" -e "s/version:.*/version: $(VERSION)/" ./charts/jx-app-sonar-scanner/Chart.yaml
 	sed -i "" -e "s/tag: .*/tag: $(VERSION)/" ./charts/jx-app-sonar-scanner/values.yaml
+	sed -i "" -e "s/\(FROM gcr\.io\/jenkinsxio\/builder-go-maven\:\).*/\1${BUILDER_VERSION}/" Dockerfile
 else ifeq ($(OS),linux)
 	sed -i -e "s/version:.*/version: $(VERSION)/" ./charts/jx-app-sonar-scanner/Chart.yaml
 	sed -i -e "s/tag: .*/tag: $(VERSION)/" ./charts/jx-app-sonar-scanner/values.yaml
+	sed -i -e "s/\(FROM gcr\.io\/jenkinsxio\/builder-go-maven\:\).*/\1${BUILDER_VERSION}/" Dockerfile
 else
 	echo "platform $(OS) not supported to tag with"
 	exit -1

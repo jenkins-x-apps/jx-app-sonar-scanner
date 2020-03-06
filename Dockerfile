@@ -1,4 +1,4 @@
-FROM gcr.io/jenkinsxio/builder-go-maven:latest
+FROM gcr.io/jenkinsxio/builder-go-maven:2.0.1062-389
 USER root
 ENV SONARQUBE_CLI_RELEASE_VERSION "4.2.0.1873"
 ENV SHELLCHECK_RELEASE_VERSION "stable"
