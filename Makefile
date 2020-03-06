@@ -3,7 +3,7 @@ OS := $(shell uname | tr '[:upper:]' '[:lower:]')
 
 GO_VARS := GO111MODULE=on GO15VENDOREXPERIMENT=1 CGO_ENABLED=0
 REV := $(shell git rev-parse --short HEAD 2> /dev/null || echo 'unknown')
-IMAGE ?= tdcox/jx-app-sonar-scanner
+IMAGE ?= gcr.io/jx-mar19/jx-app-sonar-scanner
 VERSION ?= 0.0.0-dev-$(REV)
 BUILDFLAGS := '-X github.com/jenkins-x-apps/jx-app-sonar-scanner/internal/version.binaryVersion=$(VERSION) -X github.com/jenkins-x-apps/jx-app-sonar-scanner/internal/version.imageName=$(IMAGE)'
 
@@ -76,13 +76,13 @@ release: linux test check update-release-version ## skaffold-build detach-and-re
 update-release-version: ## Updates the release version
 ifeq ($(OS),darwin)
 	git clone https://github.com/jenkins-x/jenkins-x-versions.git
-	BUILDER_VERSION=$(jx step get dependency-version --host=github.com --owner=jenkins-x --repo=jenkins-x-builders --short --dir jenkins-x-versions)
+	export BUILDER_VERSION=$(jx step get dependency-version --host=github.com --owner=jenkins-x --repo=jenkins-x-builders --short --dir jenkins-x-versions)
 	sed -i "" -e "s/version:.*/version: $(VERSION)/" ./charts/jx-app-sonar-scanner/Chart.yaml
 	sed -i "" -e "s/tag: .*/tag: $(VERSION)/" ./charts/jx-app-sonar-scanner/values.yaml
 	sed -i "" -e "s/\(FROM gcr\.io\/jenkinsxio\/builder-go-maven\:\).*/\1${BUILDER_VERSION}/" Dockerfile
 else ifeq ($(OS),linux)
 	git clone https://github.com/jenkins-x/jenkins-x-versions.git
-	BUILDER_VERSION=$(jx step get dependency-version --host=github.com --owner=jenkins-x --repo=jenkins-x-builders --short --dir jenkins-x-versions)
+	export BUILDER_VERSION=$(jx step get dependency-version --host=github.com --owner=jenkins-x --repo=jenkins-x-builders --short --dir jenkins-x-versions)
 	sed -i -e "s/version:.*/version: $(VERSION)/" ./charts/jx-app-sonar-scanner/Chart.yaml
 	sed -i -e "s/tag: .*/tag: $(VERSION)/" ./charts/jx-app-sonar-scanner/values.yaml
 	sed -i -e "s/\(FROM gcr\.io\/jenkinsxio\/builder-go-maven\:\).*/\1${BUILDER_VERSION}/" Dockerfile

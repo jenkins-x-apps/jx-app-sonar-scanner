@@ -76,7 +76,7 @@ pipelineConfig:
                 command: /kaniko/executor
                 args:
                   - --dockerfile=/workspace/source/Dockerfile
-                  - --destination=docker.io/tdcox/jx-app-fossa:${inputs.params.version}
-                  - --destination=docker.io/tdcox/jx-app-fossa:latest
+                  - --destination=gcr.io/jx-mar19/jx-app-fossa:${inputs.params.version}
+                  - --destination=gcr.io/jx-mar19/jx-app-fossa:latest
                   - --context=/workspace/source
 

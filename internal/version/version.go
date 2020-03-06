@@ -8,7 +8,7 @@ import (
 var (
 	// The current version of the binary
 	binaryVersion = "0.0.0-unset"
-	imageName     = "tdcox/jx-app-sonar-scanner"
+	imageName     = "gcr.io/jx-mar19/jx-app-sonar-scanner"
 )
 
 // GetVersion returns the version of this binary.
