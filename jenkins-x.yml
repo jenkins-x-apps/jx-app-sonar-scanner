@@ -43,10 +43,8 @@ pipelineConfig:
               - name: GOOGLE_APPLICATION_CREDENTIALS
                 value: /builder/home/kaniko-secret.json
             steps:
-              - command: make
-                args:
-                  - all
-                name: make-build
+              - command: env
+                name: get-env
               - command: make
                 args:
                   - release
