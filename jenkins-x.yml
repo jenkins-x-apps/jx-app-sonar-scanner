@@ -28,7 +28,7 @@ pipelineConfig:
     release:
       pipeline:
         agent:
-          image: gcr.io/jx-jenkinsxio/builder-go:0.1.339
+          image: gcr.io/jenkinsxio/builder-go:0.1.339
         stages:
           - name: release
             environment:
