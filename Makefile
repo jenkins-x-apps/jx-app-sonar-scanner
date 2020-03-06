@@ -48,8 +48,8 @@ check: $(GOLINT) $(FGT) $(GOMMIT)
 	@$(FGT) $(GOLINT) ./...
 	@echo "VETTING"
 	@$(GO_VARS) $(FGT) go vet ./...
-	@echo "CONVENTIONAL COMMIT CHECK"
-	@$(GOMMIT) check range $(GOMMIT_START_SHA) $$(git log --pretty=format:'%H' -n 1)
+	#@echo "CONVENTIONAL COMMIT CHECK"
+	#@$(GOMMIT) check range $(GOMMIT_START_SHA) $$(git log --pretty=format:'%H' -n 1)
 
 .PHONY: watch
 watch: ## Watches for file changes in Go source files and re-runs 'skaffold build'. Requires entr
