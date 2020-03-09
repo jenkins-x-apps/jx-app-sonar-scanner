@@ -2,6 +2,8 @@ package pipeline
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/jenkins-x-apps/jx-app-sonar-scanner/internal/logging"
 	"github.com/jenkins-x-apps/jx-app-sonar-scanner/internal/util"
 	"github.com/jenkins-x-apps/jx-app-sonar-scanner/internal/version"
@@ -10,7 +12,6 @@ import (
 	"github.com/jenkins-x/jx/pkg/tekton/syntax"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"path/filepath"
 )
 
 var (
@@ -49,7 +50,13 @@ func (e *MetaPipelineConfigurator) ConfigurePipeline() error {
 		return errors.Errorf("unable to find effective pipeline config in '%s'", e.sourceDir)
 	}
 
+	log.printf("pipelineConfigPath: %s", pipelineConfigPath)
+
 	projectConfig, err := config.LoadProjectConfigFile(pipelineConfigPath)
+	if err != nil {
+		return errors.Wrap(err, "unable to load pipeline configuration")
+	}
+
 	err = e.insertApplicationStep(projectConfig)
 	if err != nil {
 		return errors.Wrap(err, "unable to enhance pipeline with sonar-scanner configuration")
