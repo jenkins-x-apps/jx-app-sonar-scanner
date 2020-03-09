@@ -34,11 +34,11 @@ var (
 )
 
 func init() {
-	configureCmd.Flags().StringVar(&sqServer, sqServerOptionName, "s", "The URL of your Sonarqube server instance including protocol and port.")
+	configureCmd.Flags().StringVar(&sqServer, sqServerOptionName, "", "The URL of your Sonarqube server instance including protocol and port.")
 	_ = viper.BindPFlag(sqServerOptionName, configureCmd.Flags().Lookup(sqServerOptionName))
 	viper.SetDefault(sqServerOptionName, "http://jx-sonarqube.sonarqube.svc.cluster.local:9000")
 
-	configureCmd.Flags().StringVar(&apiKey, apiKeyOptionName, "k", "The Sonarqube user token, if required by your server instance.")
+	configureCmd.Flags().StringVar(&apiKey, apiKeyOptionName, "", "The Sonarqube user token, if required by your server instance.")
 	_ = viper.BindPFlag(apiKeyOptionName, configureCmd.Flags().Lookup(apiKeyOptionName))
 
 	configureCmd.Flags().BoolVarP(&scanonpreview, scanonpreviewOptionName, "p", true, "Run Sonarqube scans against all preview builds.")

@@ -12,8 +12,8 @@ spec:
         command: /jx-app-sonar-scanner
         args:
             - configure
-            - "-s {{ .Values.sqServer }}"
-            - "-k {{ .Values.apiKey }}"
-            - "-p {{ .Values.scanonpreview }}"
-            - "-r {{ .Values.scanonrelease }}"
+            - "--sqServer {{ .Values.sqServer }}"
+            - "--apiKey {{ .Values.apiKey }}"
+            - "--scanonpreview {{ .Values.scanonpreview }}"
+            - "--scanonrelease {{ .Values.scanonrelease }}"
 
