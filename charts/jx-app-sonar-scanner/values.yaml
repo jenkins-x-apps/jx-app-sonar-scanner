@@ -4,4 +4,7 @@
 image:
   repository: gcr.io/jx-mar19/jx-app-sonar-scanner
   tag: latest
-
+sqServer: "{{ .Values.sqServer }}"
+apiKey: "{{ .Values.apiKey }}"
+scanonpreview: "{{ .Values.scanonpreview }}"
+scanonrelease: "{{ .Values.scanonrelease }}"
