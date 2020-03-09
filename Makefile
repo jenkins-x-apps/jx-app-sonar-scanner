@@ -83,7 +83,9 @@ ifeq ($(OS),darwin)
 else ifeq ($(OS),linux)
 	git clone https://github.com/jenkins-x/jenkins-x-versions.git
 	export BUILDER_VERSION=$(jx step get dependency-version --host=github.com --owner=jenkins-x --repo=jenkins-x-builders --short --dir jenkins-x-versions)
-	echo $BUILDER_VERSION
+	echo ${BUILDER_VERSION}
+	MY_TEST="TESTING"
+	echo ${MY_TEST}
 	sed -i -e "s/version:.*/version: $(VERSION)/" ./charts/jx-app-sonar-scanner/Chart.yaml
 	sed -i -e "s/tag: .*/tag: $(VERSION)/" ./charts/jx-app-sonar-scanner/values.yaml
 	sed -i -e "s/\(FROM gcr\.io\/jenkinsxio\/builder-go-maven\:\).*/\1${BUILDER_VERSION}/" Dockerfile
