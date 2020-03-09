@@ -68,10 +68,7 @@ pipelineConfig:
               - name: get-env
                 sh: ls -l /secrets/kaniko
               - name: make-release
-                command: /bin/bash
-                args:
-                  - make
-                  - release
+                sh: /bin/bash make release
               - name: build-image
                 image: gcr.io/kaniko-project/executor:debug-9912ccbf8d22bbafbf971124600fbb0b13b9cbd6
                 command: /kaniko/executor
