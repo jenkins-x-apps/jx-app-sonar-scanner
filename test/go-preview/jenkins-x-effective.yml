@@ -1,0 +1,184 @@
+buildPack: go
+pipelineConfig:
+  agent:
+    dir: /home/jenkins/go/src/REPLACE_ME_GIT_PROVIDER/REPLACE_ME_ORG/REPLACE_ME_APP_NAME
+    image: go
+    label: jenkins-go
+  extends:
+    file: go/pipeline.yaml
+    import: classic
+  pipelines:
+    pullRequest:
+      pipeline:
+        options:
+          containerOptions:
+            env:
+            - name: DOCKER_CONFIG
+              value: /home/jenkins/.docker/
+            - name: DOCKER_REGISTRY
+              valueFrom:
+                configMapKeyRef:
+                  key: docker.registry
+                  name: jenkins-x-docker-registry
+            - name: GIT_AUTHOR_EMAIL
+              value: jenkins-x@googlegroups.com
+            - name: GIT_AUTHOR_NAME
+              value: jenkins-x-bot
+            - name: GIT_COMMITTER_EMAIL
+              value: jenkins-x@googlegroups.com
+            - name: GIT_COMMITTER_NAME
+              value: jenkins-x-bot
+            - name: JENKINS_URL
+              value: http://jenkins:8080
+            - name: XDG_CONFIG_HOME
+              value: /home/jenkins
+            name: ""
+            resources:
+              limits:
+                cpu: "1"
+                memory: 1448Mi
+              requests:
+                cpu: 400m
+                memory: 600Mi
+            securityContext:
+              privileged: true
+            volumeMounts:
+            - mountPath: /home/jenkins
+              name: workspace-volume
+            - mountPath: /var/run/docker.sock
+              name: docker-daemon
+            - mountPath: /home/jenkins/.docker
+              name: volume-0
+          volumes:
+          - emptyDir: {}
+            name: workspace-volume
+          - hostPath:
+              path: /var/run/docker.sock
+            name: docker-daemon
+          - name: volume-0
+            secret:
+              secretName: jenkins-docker-cfg
+        stages:
+        - agent:
+            image: go
+          name: from-build-pack
+          steps:
+          - command: make linux
+            dir: /workspace/source
+            image: go
+            name: build-make-linux
+          - command: /kaniko/executor --cache=true --cache-dir=/workspace --context=/workspace/source
+              --dockerfile=/workspace/source/Dockerfile --destination=gcr.io/jx-mar19/test322:${inputs.params.version}
+              --cache-repo=gcr.io/jx-mar19/cache
+            dir: /workspace/source
+            image: gcr.io/kaniko-project/executor:9912ccbf8d22bbafbf971124600fbb0b13b9cbd6
+            name: build-container-build
+          - command: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:$PREVIEW_VERSION
+            dir: /workspace/source
+            image: go
+            name: postbuild-post-build
+          - command: make preview
+            dir: /workspace/source/charts/preview
+            image: go
+            name: promote-make-preview
+          - command: jx preview --app $APP_NAME --dir ../..
+            dir: /workspace/source/charts/preview
+            image: go
+            name: promote-jx-preview
+    release:
+      pipeline:
+        options:
+          containerOptions:
+            env:
+            - name: DOCKER_CONFIG
+              value: /home/jenkins/.docker/
+            - name: DOCKER_REGISTRY
+              valueFrom:
+                configMapKeyRef:
+                  key: docker.registry
+                  name: jenkins-x-docker-registry
+            - name: GIT_AUTHOR_EMAIL
+              value: jenkins-x@googlegroups.com
+            - name: GIT_AUTHOR_NAME
+              value: jenkins-x-bot
+            - name: GIT_COMMITTER_EMAIL
+              value: jenkins-x@googlegroups.com
+            - name: GIT_COMMITTER_NAME
+              value: jenkins-x-bot
+            - name: JENKINS_URL
+              value: http://jenkins:8080
+            - name: XDG_CONFIG_HOME
+              value: /home/jenkins
+            name: ""
+            resources:
+              limits:
+                cpu: "1"
+                memory: 1448Mi
+              requests:
+                cpu: 400m
+                memory: 600Mi
+            securityContext:
+              privileged: true
+            volumeMounts:
+            - mountPath: /home/jenkins
+              name: workspace-volume
+            - mountPath: /var/run/docker.sock
+              name: docker-daemon
+            - mountPath: /home/jenkins/.docker
+              name: volume-0
+          volumes:
+          - emptyDir: {}
+            name: workspace-volume
+          - hostPath:
+              path: /var/run/docker.sock
+            name: docker-daemon
+          - name: volume-0
+            secret:
+              secretName: jenkins-docker-cfg
+        stages:
+        - agent:
+            image: go
+          name: from-build-pack
+          steps:
+          - command: jx step git credentials
+            dir: /workspace/source
+            image: go
+            name: setup-jx-git-credentials
+          - command: make build
+            dir: /workspace/source
+            image: go
+            name: build-make-build
+          - command: /kaniko/executor --cache=true --cache-dir=/workspace --context=/workspace/source
+              --dockerfile=/workspace/source/Dockerfile --destination=gcr.io/jx-mar19/test322:${inputs.params.version}
+              --cache-repo=gcr.io/jx-mar19/cache
+            dir: /workspace/source
+            image: gcr.io/kaniko-project/executor:9912ccbf8d22bbafbf971124600fbb0b13b9cbd6
+            name: build-container-build
+          - command: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:${VERSION}
+            dir: /workspace/source
+            image: go
+            name: build-post-build
+          - command: jx step changelog --version v${VERSION}
+            dir: /workspace/source/charts/test322
+            image: go
+            name: promote-changelog
+          - command: jx step helm release
+            dir: /workspace/source/charts/test322
+            image: go
+            name: promote-helm-release
+          - command: jx promote -b --all-auto --timeout 1h --version ${VERSION}
+            dir: /workspace/source/charts/test322
+            image: go
+            name: promote-jx-promote
+      setVersion:
+        steps:
+        - image: go
+          steps:
+          - dir: /home/jenkins/go/src/REPLACE_ME_GIT_PROVIDER/REPLACE_ME_ORG/REPLACE_ME_APP_NAME
+            steps:
+            - comment: so we can retrieve the version in later steps
+              name: next-version
+              sh: echo \$(jx-release-version) > VERSION
+            - name: tag-version
+              sh: jx step tag --version \$(cat VERSION)
+

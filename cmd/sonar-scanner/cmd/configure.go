@@ -62,7 +62,7 @@ func configure(cmd *cobra.Command, args []string) {
 		configureCmdLogger.Fatal("not all required parameters for this command execution specified")
 	}
 
-	pipelineExtender := pipeline.NewMetaPipelineConfigurator(sourceDir, viper.GetString(contextOptionName))
+	pipelineExtender := pipeline.NewMetaPipelineConfigurator(sourceDir, viper.GetString(contextOptionName), sqServer, apiKey, scanonpreview, scanonrelease)
 	err := pipelineExtender.ConfigurePipeline()
 	if err != nil {
 		configureCmdLogger.Fatal(err)

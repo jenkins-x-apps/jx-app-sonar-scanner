@@ -12,6 +12,7 @@ cp "shellcheck-${SHELLCHECK_RELEASE_VERSION}/shellcheck" /usr/bin/ && \
 rm -rf "shellcheck-${SHELLCHECK_RELEASE_VERSION}"
 
 COPY ./build/jx-app-sonar-scanner /jx-app-sonar-scanner
+COPY ./exec-sonar-scanner.sh /
 
 ENTRYPOINT ["/jx-app-sonar-scanner"]
 
