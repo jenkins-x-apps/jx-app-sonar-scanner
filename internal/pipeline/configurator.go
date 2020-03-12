@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"strconv"
 
@@ -64,6 +65,15 @@ func (e *MetaPipelineConfigurator) ConfigurePipeline() error {
 		"pipelineConfigPath": pipelineConfigPath,
 	}).Info("path")
 
+	// Dump pipeline to log to check input format
+	fmt.Println("---------------------------INPUT PIPELINE---------------------------")
+	content, err := ioutil.ReadFile(pipelineConfigPath)
+	if err != nil {
+		return errors.Errorf("unable to display pipeline config '%s'", pipelineConfigPath)
+	}
+	fmt.Println(string(content))
+	fmt.Println("--------------------------------------------------------------------")
+
 	projectConfig, err := config.LoadProjectConfigFile(pipelineConfigPath)
 	if err != nil {
 		return errors.Wrap(err, "unable to load pipeline configuration")
@@ -78,6 +88,16 @@ func (e *MetaPipelineConfigurator) ConfigurePipeline() error {
 	if err != nil {
 		return errors.Wrap(err, "unable to write modified project config")
 	}
+
+	// Dump pipeline to log to check output format
+	fmt.Println("--------------------------OUTPUT PIPELINE---------------------------")
+	content, err = ioutil.ReadFile(pipelineConfigPath)
+	if err != nil {
+		return errors.Errorf("unable to display pipeline config '%s'", pipelineConfigPath)
+	}
+	fmt.Println(string(content))
+	fmt.Println("--------------------------------------------------------------------")
+
 	return nil
 }
 
