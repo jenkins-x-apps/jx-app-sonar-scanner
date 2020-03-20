@@ -13,6 +13,7 @@ rm -rf "shellcheck-${SHELLCHECK_RELEASE_VERSION}"
 
 COPY ./build/jx-app-sonar-scanner /jx-app-sonar-scanner
 COPY ./exec-sonar-scanner.sh /usr/local/bin/exec-sonar-scanner.sh
+RUN ["chmod", "+x", "/usr/local/bin/exec-sonar-scanner.sh"]
 
 ENTRYPOINT ["/jx-app-sonar-scanner"]
 
