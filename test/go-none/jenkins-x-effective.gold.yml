@@ -2,6 +2,7 @@ buildPack: go
 pipelineConfig:
   agent:
     dir: /home/jenkins/go/src/REPLACE_ME_GIT_PROVIDER/REPLACE_ME_ORG/REPLACE_ME_APP_NAME
+    image: go
     label: jenkins-go
   extends:
     file: go/pipeline.yaml
@@ -9,7 +10,6 @@ pipelineConfig:
   pipelines:
     pullRequest:
       pipeline:
-        agent: {}
         options:
           containerOptions:
             env:
@@ -49,71 +49,44 @@ pipelineConfig:
               name: docker-daemon
             - mountPath: /home/jenkins/.docker
               name: volume-0
-          timeout:
-            time: 0
+          volumes:
+          - emptyDir: {}
+            name: workspace-volume
+          - hostPath:
+              path: /var/run/docker.sock
+            name: docker-daemon
+          - name: volume-0
+            secret:
+              secretName: jenkins-docker-cfg
         stages:
         - agent:
             image: go
           name: from-build-pack
-          options:
-            stash:
-              files: ""
-              name: ""
-            timeout:
-              time: 0
-            unstash:
-              name: ""
           steps:
-          - agent: {}
-            command: make linux
+          - command: make linux
             dir: /workspace/source
             image: go
-            loop:
-              steps: null
-              values: null
-              variable: ""
             name: build-make-linux
-          - agent: {}
-            command: /kaniko/executor --cache=true --cache-dir=/workspace --context=/workspace/source
+          - command: /kaniko/executor --cache=true --cache-dir=/workspace --context=/workspace/source
               --dockerfile=/workspace/source/Dockerfile --destination=gcr.io/jx-mar19/test322:${inputs.params.version}
               --cache-repo=gcr.io/jx-mar19/cache
             dir: /workspace/source
             image: gcr.io/kaniko-project/executor:9912ccbf8d22bbafbf971124600fbb0b13b9cbd6
-            loop:
-              steps: null
-              values: null
-              variable: ""
             name: build-container-build
-          - agent: {}
-            command: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:$PREVIEW_VERSION
+          - command: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:$PREVIEW_VERSION
             dir: /workspace/source
             image: go
-            loop:
-              steps: null
-              values: null
-              variable: ""
             name: postbuild-post-build
-          - agent: {}
-            command: make preview
+          - command: make preview
             dir: /workspace/source/charts/preview
             image: go
-            loop:
-              steps: null
-              values: null
-              variable: ""
             name: promote-make-preview
-          - agent: {}
-            command: jx preview --app $APP_NAME --dir ../..
+          - command: jx preview --app $APP_NAME --dir ../..
             dir: /workspace/source/charts/preview
             image: go
-            loop:
-              steps: null
-              values: null
-              variable: ""
             name: promote-jx-preview
     release:
       pipeline:
-        agent: {}
         options:
           containerOptions:
             env:
@@ -153,89 +126,54 @@ pipelineConfig:
               name: docker-daemon
             - mountPath: /home/jenkins/.docker
               name: volume-0
-          timeout:
-            time: 0
+          volumes:
+          - emptyDir: {}
+            name: workspace-volume
+          - hostPath:
+              path: /var/run/docker.sock
+            name: docker-daemon
+          - name: volume-0
+            secret:
+              secretName: jenkins-docker-cfg
         stages:
         - agent:
             image: go
           name: from-build-pack
-          options:
-            stash:
-              files: ""
-              name: ""
-            timeout:
-              time: 0
-            unstash:
-              name: ""
           steps:
-          - agent: {}
-            command: jx step git credentials
+          - command: jx step git credentials
             dir: /workspace/source
             image: go
-            loop:
-              steps: null
-              values: null
-              variable: ""
             name: setup-jx-git-credentials
-          - agent: {}
-            command: make build
+          - command: make build
             dir: /workspace/source
             image: go
-            loop:
-              steps: null
-              values: null
-              variable: ""
             name: build-make-build
-          - agent: {}
-            command: /kaniko/executor --cache=true --cache-dir=/workspace --context=/workspace/source
+          - command: /kaniko/executor --cache=true --cache-dir=/workspace --context=/workspace/source
               --dockerfile=/workspace/source/Dockerfile --destination=gcr.io/jx-mar19/test322:${inputs.params.version}
               --cache-repo=gcr.io/jx-mar19/cache
             dir: /workspace/source
             image: gcr.io/kaniko-project/executor:9912ccbf8d22bbafbf971124600fbb0b13b9cbd6
-            loop:
-              steps: null
-              values: null
-              variable: ""
             name: build-container-build
-          - agent: {}
-            command: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:${VERSION}
+          - command: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:${VERSION}
             dir: /workspace/source
             image: go
-            loop:
-              steps: null
-              values: null
-              variable: ""
             name: build-post-build
-          - agent: {}
-            command: jx step changelog --version v${VERSION}
+          - command: jx step changelog --version v${VERSION}
             dir: /workspace/source/charts/test322
             image: go
-            loop:
-              steps: null
-              values: null
-              variable: ""
             name: promote-changelog
-          - agent: {}
-            command: jx step helm release
+          - command: jx step helm release
             dir: /workspace/source/charts/test322
             image: go
-            loop:
-              steps: null
-              values: null
-              variable: ""
             name: promote-helm-release
-          - agent: {}
-            command: jx promote -b --all-auto --timeout 1h --version ${VERSION}
+          - command: jx promote -b --all-auto --timeout 1h --version ${VERSION}
             dir: /workspace/source/charts/test322
             image: go
-            loop:
-              steps: null
-              values: null
-              variable: ""
             name: promote-jx-promote
       setVersion:
         steps:
-        - steps:
+        - image: go
+          steps:
           - dir: /home/jenkins/go/src/REPLACE_ME_GIT_PROVIDER/REPLACE_ME_ORG/REPLACE_ME_APP_NAME
             steps:
             - comment: so we can retrieve the version in later steps
@@ -243,3 +181,4 @@ pipelineConfig:
               sh: echo \$(jx-release-version) > VERSION
             - name: tag-version
               sh: jx step tag --version \$(cat VERSION)
+

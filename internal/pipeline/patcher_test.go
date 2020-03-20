@@ -1,16 +1,18 @@
 package pipeline
 
 import (
-	"github.com/jenkins-x/jx/pkg/util"
-	"github.com/stretchr/testify/assert"
-	"github.com/udhos/equalfile"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	// "github.com/jenkins-x-apps/jx-app-sonar-scanner/internal/util"
+	"github.com/jenkins-x/jx/pkg/util"
+	"github.com/stretchr/testify/assert"
+	"github.com/udhos/equalfile"
 )
 
-func TestMetaPipelineConfigurator_ConfigurePipeline(t *testing.T) {
+func TestPatcher_ConfigurePipeline(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
@@ -57,7 +59,7 @@ func TestMetaPipelineConfigurator_ConfigurePipeline(t *testing.T) {
 			err = util.CopyDir(dataTemplateLocation, dir, true)
 			assert.NoError(t, err)
 
-			e := &MetaPipelineConfigurator{
+			e := &Patcher{
 				sourceDir:     dir,
 				context:       tt.fields.context,
 				sqServer:      tt.fields.sqServer,
@@ -66,11 +68,49 @@ func TestMetaPipelineConfigurator_ConfigurePipeline(t *testing.T) {
 				scanonrelease: tt.fields.scanonrelease,
 			}
 			if err := e.ConfigurePipeline(); (err != nil) != tt.wantErr {
-				t.Errorf("MetaPipelineConfigurator.ConfigurePipeline() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Patcher.ConfigurePipeline() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			equal, err := cmp.CompareFile(filepath.Join(dir, "jenkins-x-effective.yml"), filepath.Join(dir, "jenkins-x-effective.gold.yml"))
 			assert.NoError(t, err)
 			assert.Equal(t, equal, true, "pipeline files don't match")
+		})
+	}
+}
+
+func Test_indexOfEndOfPipeline(t *testing.T) {
+
+	// Test data
+	testDataLocation := "../../test/"
+
+	type args struct {
+		start  int
+		indent int
+	}
+	tests := []struct {
+		name    string
+		file    string
+		args    args
+		want    int
+		wantErr bool
+	}{
+		{"indexEndOfPipeline1", "indexEndOfPipeline1.yml", args{11, 4}, 86, false}, // Zero-referenced, start AFTER beginnning of this pipeline
+		{"indexEndOfPipeline2", "indexEndOfPipeline1.yml", args{88, 4}, 182, false},
+		{"indexEndOfPipeline2", "indexEndOfPipeline2.yml", args{8, 4}, 71, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dataTemplateLocation := filepath.Join(testDataLocation, tt.file)
+			content, err := ioutil.ReadFile(dataTemplateLocation)
+			assert.NoError(t, err)
+			lines := strings.Split(string(content), "\n")
+			got, err := indexOfEndOfPipeline(lines, tt.args.start, tt.args.indent)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("indexOfEndOfPipeline() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("indexOfEndOfPipeline() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

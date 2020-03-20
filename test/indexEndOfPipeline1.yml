@@ -67,14 +67,6 @@ pipelineConfig:
             dir: /workspace/source
             image: go
             name: build-make-linux
-          - command: exec-sonar-scanner.sh
-            args:
-            - -s http://jx-sonarqube.sonarqube.svc.cluster.local:9000
-            - -k 12345
-            - -r true
-            - -p true
-            image: gcr.io/jx-mar19/jx-app-sonar-scanner:0.0.0-unset
-            name: sonar-scanner
           - command: /kaniko/executor --cache=true --cache-dir=/workspace --context=/workspace/source
               --dockerfile=/workspace/source/Dockerfile --destination=gcr.io/jx-mar19/test322:${inputs.params.version}
               --cache-repo=gcr.io/jx-mar19/cache
@@ -156,14 +148,6 @@ pipelineConfig:
             dir: /workspace/source
             image: go
             name: build-make-build
-          - command: exec-sonar-scanner.sh
-            args:
-            - -s http://jx-sonarqube.sonarqube.svc.cluster.local:9000
-            - -k 12345
-            - -r true
-            - -p true
-            image: gcr.io/jx-mar19/jx-app-sonar-scanner:0.0.0-unset
-            name: sonar-scanner
           - command: /kaniko/executor --cache=true --cache-dir=/workspace --context=/workspace/source
               --dockerfile=/workspace/source/Dockerfile --destination=gcr.io/jx-mar19/test322:${inputs.params.version}
               --cache-repo=gcr.io/jx-mar19/cache
@@ -197,4 +181,3 @@ pipelineConfig:
               sh: echo \$(jx-release-version) > VERSION
             - name: tag-version
               sh: jx step tag --version \$(cat VERSION)
-

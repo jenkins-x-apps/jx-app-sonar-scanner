@@ -72,3 +72,9 @@ func CopyFile(src string, dst string) (err error) {
 
 	return
 }
+
+// MoveFile renames the file named src to the file named by dst.
+// If dst already exists and is not a directory, MoveFile replaces it
+func MoveFile(src string, dst string) (err error) {
+	return os.Rename(src, dst)
+}
