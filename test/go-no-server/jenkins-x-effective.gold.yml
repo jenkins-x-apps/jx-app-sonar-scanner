@@ -67,7 +67,7 @@ pipelineConfig:
             dir: /workspace/source
             image: go
             name: build-make-linux
-          - command: /exec-sonar-scanner.sh
+          - command: /usr/local/bin/exec-sonar-scanner.sh
             args:
             - -k 12345
             - -r true
@@ -155,7 +155,7 @@ pipelineConfig:
             dir: /workspace/source
             image: go
             name: build-make-build
-          - command: /exec-sonar-scanner.sh
+          - command: /usr/local/bin/exec-sonar-scanner.sh
             args:
             - -k 12345
             - -r true

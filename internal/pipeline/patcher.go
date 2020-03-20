@@ -208,7 +208,7 @@ func (e *Patcher) createApplicationStep(indent int) []string {
 
 	// construct the pipeline syntax for the step
 	step := []string{}
-	step = append(step, ws+"- command: /exec-sonar-scanner.sh")
+	step = append(step, ws+"- command: /usr/local/bin/exec-sonar-scanner.sh")
 	step = append(step, ws+"  args:")
 	for _, arg := range args {
 		step = append(step, ws+"  - "+arg)
