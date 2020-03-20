@@ -1,10 +1,12 @@
 package util
 
 import (
-	"github.com/cenkalti/backoff"
+	"fmt"
 	"io"
 	"os"
 	"time"
+
+	"github.com/cenkalti/backoff"
 )
 
 var timeout = 60 * time.Second
@@ -77,4 +79,32 @@ func CopyFile(src string, dst string) (err error) {
 // If dst already exists and is not a directory, MoveFile replaces it
 func MoveFile(src string, dst string) (err error) {
 	return os.Rename(src, dst)
+}
+
+// FileExists checks if a file exists and is not a directory before we
+// try using it to prevent further errors.
+func FileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
+// AppropriateToScan checks the current pipeline execution environment to see
+// if it is appropriate to insert the app.
+func AppropriateToScan() bool {
+	// Should we be attempting to patch in this execution scope?
+	configFileExists := FileExists(".pre-commit-config.yaml")
+	if os.Getenv("PIPELINE_KIND") == "pullrequest" && !configFileExists {
+		fmt.Println("Detected preview build. Preparing to scan...")
+		return true
+	} else if os.Getenv("PIPELINE_KIND") == "release" && !configFileExists {
+		fmt.Println("Detected release build. Preparing to scan...")
+		return true
+	} else {
+		// Environment build so skip
+		fmt.Println("Skipping sonar-scan")
+		return false
+	}
 }
