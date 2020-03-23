@@ -77,16 +77,19 @@ func (e *Patcher) ConfigurePipeline() error {
 
 	lines := strings.Split(string(content), "\n")
 	lines = lines[:len(lines)-1] // trim the additional line introduced by strings.Split
+	if len(lines) == 0 {
+		return errors.Errorf("empty pipeline")
+	}
 
 	if e.scanonpreview {
-		lines, err = e.insertApplicationStep(lines, "pullRequest", "build-make-linux")
+		lines, err = e.insertApplicationStep(lines, "pullRequest")
 		if err != nil {
 			return errors.Wrap(err, "unable to enhance preview pipeline with sonar-scanner configuration")
 		}
 	}
 
 	if e.scanonrelease {
-		lines, err = e.insertApplicationStep(lines, "release", "build-make-build")
+		lines, err = e.insertApplicationStep(lines, "release")
 		if err != nil {
 			return errors.Wrap(err, "unable to enhance release pipeline with sonar-scanner configuration")
 		}
@@ -109,7 +112,24 @@ func (e *Patcher) ConfigurePipeline() error {
 	return nil
 }
 
-func (e *Patcher) insertApplicationStep(lines []string, pipeline string, stepname string) ([]string, error) {
+func (e *Patcher) insertApplicationStep(lines []string, pipeline string) ([]string, error) {
+
+	bpm := map[string]map[string]string{
+		"go":     {"pullRequest": "build-make-linux", "release": "build-make-build"},
+		"maven":  {"pullRequest": "build-mvn-install", "release": "build-mvn-deploy"},
+		"python": {"pullRequest": "build-python-unittest", "release": "build-python-unittest"},
+	}
+
+	builder := getBuildPack(lines)
+	stepname := bpm[builder][pipeline]
+
+	if builder == "" || stepname == "" {
+		// We have found a pipeline that lacks a builder that we recognise
+		// Fail without breaking the build
+		fmt.Printf("unable to recognise builder: %s\n", stepname)
+		fmt.Printf("skipping scan on pipeline: %s\n", pipeline)
+		return lines, nil
+	}
 
 	log.WithFields(log.Fields{
 		"pipelineKind": pipeline,
@@ -134,7 +154,11 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string, stepnam
 
 	somewhereInTargetStep, err := indexOfNamedStep(targetPipeline, stepname)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to find named step")
+		// We have found a pipeline that lacks a build step that we recognise
+		// Fail without breaking the build
+		fmt.Printf("unable to find named step: %s\n", stepname)
+		fmt.Printf("skipping scan on pipeline: %s\n", targetPipeline)
+		return lines, nil
 	}
 	somewhereInTargetStep = somewhereInTargetStep + targetPipelineStart // realign to absolute offset
 
@@ -315,4 +339,14 @@ func countLeadingSpace(line string) int {
 		}
 	}
 	return i
+}
+
+func getBuildPack(lines []string) string {
+	exp := `^buildPack: (\S+)`
+	re := regexp.MustCompile(exp)
+	r := re.FindStringSubmatch(lines[0])
+	if len(r) == 2 {
+		return r[1]
+	}
+	return ""
 }

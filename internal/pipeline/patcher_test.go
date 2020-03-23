@@ -46,6 +46,10 @@ func TestPatcher_ConfigurePipeline(t *testing.T) {
 		{"go-none", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", false, false}, false},
 		{"go-no-token", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "", true, true}, false},
 		{"go-no-server", fields{"", "", "12345", true, true}, false},
+		{"maven", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"python", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"unknown-step-name", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"unknown-builder", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
 	}
 
 	cmp := equalfile.New(nil, equalfile.Options{})
