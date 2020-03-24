@@ -25,7 +25,7 @@ if [[ ${IS_PREVIEW_PIPELINE} == "true" ]] || [[ ${IS_RELEASE_PIPELINE} == "true"
     if [[ ${IS_PREVIEW_PIPELINE} == "true" ]] ; then
         if [[ ${SCAN_ON_PREVIEW} == "true" ]] ; then
             echo "Sonarqube is scanning files..."
-            /opt/sonar/bin/sonar-scanner "-Dsonar.host.url=${SONARQUBE_SERVER}" "-Dsonar.projectKey=${JOB_NAME}" "-Dsonar.login=${SONAR_TOKEN}"
+            /opt/sonar/bin/sonar-scanner "-Dsonar.host.url=${SONARQUBE_SERVER}" "-Dsonar.projectKey=${JOB_NAME}" "-Dsonar.login=${SONAR_TOKEN}" "-Dsonar.java.binaries=target/classes"
         else
             echo "Sonarqube scanning disabled in preview builds."
         fi
@@ -33,7 +33,7 @@ if [[ ${IS_PREVIEW_PIPELINE} == "true" ]] || [[ ${IS_RELEASE_PIPELINE} == "true"
     if [[ ${IS_RELEASE_PIPELINE} == "true" ]] ; then
         if [[ ${SCAN_ON_RELEASE} == "true" ]] ; then
             echo "Sonarqube is scanning files..."
-            /opt/sonar/bin/sonar-scanner "-Dsonar.host.url=${SONARQUBE_SERVER}" "-Dsonar.projectKey=${JOB_NAME}" "-Dsonar.login=${SONAR_TOKEN}"
+            /opt/sonar/bin/sonar-scanner "-Dsonar.host.url=${SONARQUBE_SERVER}" "-Dsonar.projectKey=${JOB_NAME}" "-Dsonar.login=${SONAR_TOKEN}" "-Dsonar.java.binaries=target/classes"
         else
             echo "Sonarqube scanning disabled in release builds."
         fi
