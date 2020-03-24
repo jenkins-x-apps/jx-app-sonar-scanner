@@ -2,7 +2,7 @@ package pipeline
 
 import (
 	"io/ioutil"
-	//	"os"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
