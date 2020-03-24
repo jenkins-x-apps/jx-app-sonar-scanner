@@ -20,11 +20,14 @@ fi
 if [[ ${IS_RELEASE_PIPELINE} == "true" ]] ; then
     echo "Detected Release pipeline";
 fi
+env
+ls -laR
 # Only activate in preview builds or the first stage of a release
 if [[ ${IS_PREVIEW_PIPELINE} == "true" ]] || [[ ${IS_RELEASE_PIPELINE} == "true" ]] ; then
     if [[ ${IS_PREVIEW_PIPELINE} == "true" ]] ; then
         if [[ ${SCAN_ON_PREVIEW} == "true" ]] ; then
             echo "Sonarqube is scanning files..."
+            echo "BuildPack: " ${BUILDPACK_NAME}
             if [[ ${BUILDPACK_NAME} == "maven" ]] ; then
                 /opt/sonar/bin/sonar-scanner "-Dsonar.host.url=${SONARQUBE_SERVER}" "-Dsonar.projectKey=${JOB_NAME}" "-Dsonar.login=${SONAR_TOKEN}" "-Dsonar.language=java" "-Dsonar.sources=src/main/java" "-Dsonar.java.binaries=target/classes"
             else
@@ -37,6 +40,7 @@ if [[ ${IS_PREVIEW_PIPELINE} == "true" ]] || [[ ${IS_RELEASE_PIPELINE} == "true"
     if [[ ${IS_RELEASE_PIPELINE} == "true" ]] ; then
         if [[ ${SCAN_ON_RELEASE} == "true" ]] ; then
             echo "Sonarqube is scanning files..."
+            echo "BuildPack: " ${BUILDPACK_NAME}
             if [[ ${BUILDPACK_NAME} == "maven" ]] ; then
                 /opt/sonar/bin/sonar-scanner "-Dsonar.host.url=${SONARQUBE_SERVER}" "-Dsonar.projectKey=${JOB_NAME}" "-Dsonar.login=${SONAR_TOKEN}" "-Dsonar.language=java" "-Dsonar.sources=src/main/java" "-Dsonar.java.binaries=target/classes"
             else
