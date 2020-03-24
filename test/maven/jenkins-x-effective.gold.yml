@@ -40,6 +40,8 @@ pipelineConfig:
     pullRequest:
       pipeline:
         env:
+        - name: BUILDPACK_NAME
+          value: maven
         - name: APP_NAME
           value: test325
         - name: BRANCH_NAME
@@ -212,6 +214,8 @@ pipelineConfig:
     release:
       pipeline:
         env:
+        - name: BUILDPACK_NAME
+          value: maven
         - name: APP_NAME
           value: test325
         - name: BRANCH_NAME

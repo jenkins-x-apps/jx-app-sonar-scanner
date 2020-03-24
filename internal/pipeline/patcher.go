@@ -120,13 +120,13 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string) ([]stri
 		"python": {"pullRequest": "build-python-unittest", "release": "build-python-unittest"},
 	}
 
-	builder := getBuildPack(lines)
-	stepname := bpm[builder][pipeline]
+	buildPack := getBuildPack(lines)
+	stepname := bpm[buildPack][pipeline]
 
-	if builder == "" || stepname == "" {
-		// We have found a pipeline that lacks a builder that we recognise
+	if buildPack == "" || stepname == "" {
+		// We have found a pipeline that lacks a buildPack that we recognise
 		// Fail without breaking the build
-		fmt.Printf("unable to recognise builder: %s\n", stepname)
+		fmt.Printf("unable to recognise buildPack: %s\n", stepname)
 		fmt.Printf("skipping scan on pipeline: %s\n", pipeline)
 		return lines, nil
 	}
@@ -143,7 +143,7 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string) ([]stri
 	pipelineIndent := countLeadingSpace(lines[targetPipelineStart])
 	targetPipelineEnd, err := indexOfEndOfPipeline(lines, targetPipelineStart+1, pipelineIndent)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding  end of pipeline")
+		return nil, errors.Wrap(err, "finding end of pipeline")
 	}
 
 	fmt.Printf("targetPipelineStart: %d\n", targetPipelineStart)
@@ -151,6 +151,12 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string) ([]stri
 	fmt.Printf("size: %d\n", len(lines))
 
 	targetPipeline := lines[targetPipelineStart:targetPipelineEnd] // This creates an offset that we need to account for later
+
+	envInsertPoint, err := indexOfEnv(targetPipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding env insert point")
+	}
+	envInsertPoint = targetPipelineStart + envInsertPoint + 1
 
 	somewhereInTargetStep, err := indexOfNamedStep(targetPipeline, stepname)
 	if err != nil {
@@ -176,7 +182,7 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string) ([]stri
 		return nil, errors.Wrap(err, "unable to find start of step")
 	}
 	stepIndent := countLeadingSpace(lines[currentStep])
-
+	envIndent := countLeadingSpace(lines[envInsertPoint])
 	fmt.Printf("nextStep: %d\n", nextStep)
 
 	// resolve the offsets
@@ -189,6 +195,11 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string) ([]stri
 	lines = append(lines, applicationStep...)                                           // make the slice bigger by the size of the new step
 	copy(lines[absoluteInsertPoint+len(applicationStep):], lines[absoluteInsertPoint:]) // move the subsequent lines down
 	copy(lines[absoluteInsertPoint:], applicationStep)                                  // insert the new step
+
+	envEntry := e.createEnvEntry(envIndent, buildPack)
+	lines = append(lines, envEntry...)                                 // make the slice bigger by the size of the environment variables
+	copy(lines[envInsertPoint+len(envEntry):], lines[envInsertPoint:]) // move the subsequent lines down
+	copy(lines[envInsertPoint:], envEntry)                             // insert the new step
 
 	return lines, nil
 }
@@ -240,6 +251,17 @@ func (e *Patcher) createApplicationStep(indent int) []string {
 	step = append(step, ws+"  image: "+version.GetFQImage())
 	step = append(step, ws+"  name: sonar-scanner")
 	return step
+}
+
+func (e *Patcher) createEnvEntry(indent int, buildPack string) []string {
+	// set correct whitespace for indent
+	ws := nspaces(indent)
+
+	// construct the pipeline syntax for the environment variable
+	env := []string{}
+	env = append(env, ws+"- name: BUILDPACK_NAME")
+	env = append(env, ws+"  value: "+buildPack)
+	return env
 }
 
 func nspaces(n int) string {
@@ -349,4 +371,14 @@ func getBuildPack(lines []string) string {
 		return r[1]
 	}
 	return ""
+}
+
+// indexOfEnv finds the first instance of an env: entry
+func indexOfEnv(lines []string) (int, error) {
+	for l, line := range lines {
+		if strings.Contains(line, "env:") {
+			return l, nil
+		}
+	}
+	return 0, errors.Errorf("unable to find env: entry")
 }

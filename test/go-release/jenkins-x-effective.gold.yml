@@ -90,6 +90,8 @@ pipelineConfig:
         options:
           containerOptions:
             env:
+            - name: BUILDPACK_NAME
+              value: go
             - name: DOCKER_CONFIG
               value: /home/jenkins/.docker/
             - name: DOCKER_REGISTRY

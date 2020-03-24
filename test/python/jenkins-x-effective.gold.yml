@@ -40,6 +40,8 @@ pipelineConfig:
     pullRequest:
       pipeline:
         env:
+        - name: BUILDPACK_NAME
+          value: python
         - name: APP_NAME
           value: test324
         - name: BRANCH_NAME
@@ -187,6 +189,8 @@ pipelineConfig:
     release:
       pipeline:
         env:
+        - name: BUILDPACK_NAME
+          value: python
         - name: APP_NAME
           value: test324
         - name: BRANCH_NAME
