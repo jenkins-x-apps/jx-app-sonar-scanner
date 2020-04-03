@@ -1,0 +1,66 @@
+buildPack: ml-python-gpu-training
+pipelineConfig:
+  agent:
+    container: machine-learning-gpu
+    label: jenkins-machine-learning-gpu
+  env:
+  - name: DOCKER_CONFIG
+    value: /home/jenkins/.docker/
+  pipelines:
+    pullRequest:
+      pipeline:
+        agent:
+          image: machine-learning-gpu
+        stages:
+        - dir: /workspace/source
+          name: build
+          steps:
+          - name: flake8
+            sh: source /root/.bashrc && flake8
+          - name: testing
+            sh: source /root/.bashrc && pytest
+          - name: training
+            sh: source /root/.bashrc && python3 -m pip install -r ./requirements.txt
+              && python3 app.py
+    release:
+      pipeline:
+        agent:
+          image: machine-learning-gpu
+        stages:
+        - dir: /workspace/source
+          name: prepare
+          steps:
+          - sh: git checkout master
+          - sh: git config --global credential.helper store
+          - sh: jx step git credentials
+          - sh: echo $(jx-release-version) > VERSION
+          - sh: jx step tag --version $(cat VERSION)
+        - dir: /workspace/source
+          name: build
+          steps:
+          - name: flake8
+            sh: source /root/.bashrc && flake8
+        - dir: /workspace/source
+          name: training
+          options:
+            containerOptions:
+              name: ""
+              resources:
+                limits:
+                  cpu: "4"
+                  memory: 4Gi
+                  nvidia.com/gpu: "1"
+                requests:
+                  cpu: 500m
+                  memory: 2Gi
+                  nvidia.com/gpu: "1"
+          steps:
+          - name: training
+            sh: source /root/.bashrc && python3 -m pip install -r ./requirements.txt
+              && python3 app.py
+        - dir: /workspace/source
+          name: export
+          steps:
+          - name: export-model
+            sh: |
+              source /root/.bashrc && export TARGET_SERVICE=`echo $APP_NAME | sed -Ee s/-training$/-service/` && export GIT_PROVIDER=`jx repo -qub | grep -oP '(^https?:\/\/[a-zA-Z\d-\.]+)'` && export TARGET_SERVICE_REPO=`echo $GIT_PROVIDER/$REPO_OWNER/$TARGET_SERVICE` && git clone $TARGET_SERVICE_REPO && cd $TARGET_SERVICE && git checkout syncmodel || git checkout -b syncmodel && git lfs install && git lfs track '*.onnx' && cp ../*.onnx . && cp -r ../metrics . && git add *.onnx metrics && { jx create pullrequest --push -b --title 'New model trained' --body 'feat: New model trained' || echo 'Using previous PR'; } && sha1sum *.onnx >&2

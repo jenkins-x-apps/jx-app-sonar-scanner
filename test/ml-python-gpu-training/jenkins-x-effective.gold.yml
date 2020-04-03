@@ -1,0 +1,83 @@
+buildPack: ml-python-gpu-training
+pipelineConfig:
+  env:
+  - name: BUILDPACK_NAME
+    value: ml-python-gpu-training
+  agent:
+    container: machine-learning-gpu
+    label: jenkins-machine-learning-gpu
+  pipelines:
+    pullRequest:
+      pipeline:
+        agent:
+          image: machine-learning-gpu
+        stages:
+        - dir: /workspace/source
+          name: build
+          steps:
+          - name: flake8
+            sh: source /root/.bashrc && flake8
+          - name: testing
+            sh: source /root/.bashrc && pytest
+          - command: /usr/local/bin/exec-sonar-scanner.sh
+            args:
+            - -s http://jx-sonarqube.sonarqube.svc.cluster.local:9000
+            - -k 12345
+            - -r true
+            - -p true
+            image: gcr.io/jx-mar19/jx-app-sonar-scanner:0.0.0-unset
+            name: sonar-scanner
+          - name: training
+            sh: source /root/.bashrc && python3 -m pip install -r ./requirements.txt
+              && python3 app.py
+    release:
+      pipeline:
+        agent:
+          image: machine-learning-gpu
+        stages:
+        - dir: /workspace/source
+          name: prepare
+          steps:
+          - sh: git checkout master
+          - sh: git config --global credential.helper store
+          - sh: jx step git credentials
+          - sh: echo $(jx-release-version) > VERSION
+          - sh: jx step tag --version $(cat VERSION)
+        - dir: /workspace/source
+          name: build
+          steps:
+          - name: flake8
+            sh: source /root/.bashrc && flake8
+          - command: /usr/local/bin/exec-sonar-scanner.sh
+            args:
+            - -s http://jx-sonarqube.sonarqube.svc.cluster.local:9000
+            - -k 12345
+            - -r true
+            - -p true
+            image: gcr.io/jx-mar19/jx-app-sonar-scanner:0.0.0-unset
+            name: sonar-scanner
+        - dir: /workspace/source
+          name: training
+          options:
+            containerOptions:
+              name: ""
+              resources:
+                limits:
+                  cpu: "4"
+                  memory: 4Gi
+                  nvidia.com/gpu: "1"
+                requests:
+                  cpu: 500m
+                  memory: 2Gi
+                  nvidia.com/gpu: "1"
+          steps:
+          - name: training
+            sh: source /root/.bashrc && python3 -m pip install -r ./requirements.txt
+              && python3 app.py
+        - dir: /workspace/source
+          name: export
+          steps:
+          - name: export-model
+            sh: |
+              source /root/.bashrc && export TARGET_SERVICE=`echo $APP_NAME | sed -Ee s/-training$/-service/` && export GIT_PROVIDER=`jx repo -qub | grep -oP '(^https?:\/\/[a-zA-Z\d-\.]+)'` && export TARGET_SERVICE_REPO=`echo $GIT_PROVIDER/$REPO_OWNER/$TARGET_SERVICE` && git clone $TARGET_SERVICE_REPO && cd $TARGET_SERVICE && git checkout syncmodel || git checkout -b syncmodel && git lfs install && git lfs track '*.onnx' && cp ../*.onnx . && cp -r ../metrics . && git add *.onnx metrics && { jx create pullrequest --push -b --title 'New model trained' --body 'feat: New model trained' || echo 'Using previous PR'; } && sha1sum *.onnx >&2
+

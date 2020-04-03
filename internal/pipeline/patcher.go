@@ -14,6 +14,7 @@ import (
 	"github.com/jenkins-x-apps/jx-app-sonar-scanner/internal/version"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var (
@@ -30,6 +31,20 @@ type Patcher struct {
 	scanonrelease bool
 }
 
+// Override represents a user supplied set of override values
+type Override struct {
+	Verbose     bool      `yaml:"verbose,omitempty"`
+	Skip        bool      `yaml:"skip,omitempty"`
+	PullRequest BuildStep `yaml:"pullRequest,omitempty"`
+	Release     BuildStep `yaml:"release,omitempty"`
+}
+
+// BuildStep represents the stage and step after which we should insert the scan
+type BuildStep struct {
+	Stage string `yaml:"stage,omitempty"`
+	Step  string `yaml:"step,omitempty"`
+}
+
 // NewPatcher creates a new instance of Patcher.
 func NewPatcher(sourceDir string, context string, sqServer string, apiKey string, scanonpreview bool, scanonrelease bool) Patcher {
 	return Patcher{
@@ -44,9 +59,13 @@ func NewPatcher(sourceDir string, context string, sqServer string, apiKey string
 
 // ConfigurePipeline configures the Jenkins-X pipeline.
 func (e *Patcher) ConfigurePipeline() error {
-	log.WithFields(log.Fields{
-		"dir": e.sourceDir,
-	}).Info("Processing directory")
+	debug := false
+
+	log.SetFormatter(&log.TextFormatter{
+		ForceColors: true,
+	})
+
+	logger.Debugf("Processing directory: %s", e.sourceDir)
 
 	if !util.IsDirectory(e.sourceDir) {
 		return errors.Errorf("specified directory '%s' does not exist", e.sourceDir)
@@ -57,23 +76,52 @@ func (e *Patcher) ConfigurePipeline() error {
 		effectiveConfig = fmt.Sprintf("jenkins-x-%s-effective.yml", e.context)
 	}
 
+	overrideFileName := ".jx-app-sonar-scanner.yaml"
+
+	var overrides Override
+
+	overrideFilePath := filepath.Join(e.sourceDir, overrideFileName)
+	if util.Exists(overrideFilePath) {
+		// User has set local overrides
+		overrideFileContent, err := ioutil.ReadFile(overrideFilePath)
+		if err != nil {
+			return errors.Errorf("failed to open '%s'", overrideFilePath)
+		}
+
+		err = yaml.Unmarshal(overrideFileContent, &overrides)
+		if err != nil {
+			return errors.Errorf("unable to parse '%s'", overrideFilePath)
+		}
+		if overrides.Verbose {
+			debug = true
+			log.SetLevel(log.DebugLevel)
+		}
+		if overrides.Skip {
+			log.WithFields(log.Fields{
+				"sonarscanskip": true,
+			}).Warn("Skipping sonar scan due to developer override")
+			return nil
+		}
+	}
+
 	pipelineConfigPath := filepath.Join(e.sourceDir, effectiveConfig)
 	if !util.Exists(pipelineConfigPath) {
 		return errors.Errorf("unable to find effective pipeline config in '%s'", e.sourceDir)
 	}
 
-	log.WithFields(log.Fields{
-		"pipelineConfigPath": pipelineConfigPath,
-	}).Info("path")
+	logger.Debugf("Pipeline config file: %s", pipelineConfigPath)
 
-	// Dump pipeline to log to check input format
-	fmt.Println("---------------------------INPUT PIPELINE---------------------------")
 	content, err := ioutil.ReadFile(pipelineConfigPath)
 	if err != nil {
 		return errors.Errorf("unable to open pipeline config '%s'", pipelineConfigPath)
 	}
-	fmt.Println(string(content))
-	fmt.Println("--------------------------------------------------------------------")
+
+	if debug {
+		// Dump pipeline to log to check input format
+		fmt.Println("---------------------------INPUT PIPELINE---------------------------")
+		fmt.Println(string(content))
+		fmt.Println("--------------------------------------------------------------------")
+	}
 
 	lines := strings.Split(string(content), "\n")
 	lines = lines[:len(lines)-1] // trim the additional line introduced by strings.Split
@@ -82,14 +130,14 @@ func (e *Patcher) ConfigurePipeline() error {
 	}
 
 	if e.scanonpreview {
-		lines, err = e.insertApplicationStep(lines, "pullRequest")
+		lines, err = e.insertApplicationStep(lines, "pullRequest", overrides)
 		if err != nil {
 			return errors.Wrap(err, "unable to enhance preview pipeline with sonar-scanner configuration")
 		}
 	}
 
 	if e.scanonrelease {
-		lines, err = e.insertApplicationStep(lines, "release")
+		lines, err = e.insertApplicationStep(lines, "release", overrides)
 		if err != nil {
 			return errors.Wrap(err, "unable to enhance release pipeline with sonar-scanner configuration")
 		}
@@ -100,42 +148,64 @@ func (e *Patcher) ConfigurePipeline() error {
 		return errors.Wrap(err, "unable to write modified project config")
 	}
 
-	// Dump pipeline to log to check output format
-	fmt.Println("--------------------------OUTPUT PIPELINE---------------------------")
-	content, err = ioutil.ReadFile(pipelineConfigPath)
-	if err != nil {
-		return errors.Errorf("unable to display pipeline config '%s'", pipelineConfigPath)
+	if debug {
+		// Dump pipeline to log to check output format
+		fmt.Println("--------------------------OUTPUT PIPELINE---------------------------")
+		content, err = ioutil.ReadFile(pipelineConfigPath)
+		if err != nil {
+			return errors.Errorf("unable to display pipeline config '%s'", pipelineConfigPath)
+		}
+		fmt.Println(string(content))
+		fmt.Println("--------------------------------------------------------------------")
 	}
-	fmt.Println(string(content))
-	fmt.Println("--------------------------------------------------------------------")
-
 	return nil
 }
 
-func (e *Patcher) insertApplicationStep(lines []string, pipeline string) ([]string, error) {
+func (e *Patcher) insertApplicationStep(lines []string, pipeline string, overrides Override) ([]string, error) {
 
-	bpm := map[string]map[string]string{
-		"go":     {"pullRequest": "build-make-linux", "release": "build-make-build"},
-		"maven":  {"pullRequest": "build-mvn-install", "release": "build-mvn-deploy"},
-		"python": {"pullRequest": "build-python-unittest", "release": "build-python-unittest"},
+	bpm := map[string]map[string]BuildStep{
+		"go":                     {"pullRequest": {Stage: "build", Step: "build-make-linux"}, "release": {Stage: "build", Step: "build-make-build"}},
+		"gradle":                 {"pullRequest": {Stage: "build", Step: "build-gradle-build"}, "release": {Stage: "build", Step: "build-gradle-build"}},
+		"javascript":             {"pullRequest": {Stage: "build", Step: "build-npm-test"}, "release": {Stage: "build", Step: "build-npm-test"}},
+		"maven":                  {"pullRequest": {Stage: "build", Step: "build-mvn-install"}, "release": {Stage: "build", Step: "build-mvn-deploy"}},
+		"ml-python-gpu-service":  {"pullRequest": {Stage: "build", Step: "build-testing"}, "release": {Stage: "build", Step: "build-testing"}},
+		"ml-python-gpu-training": {"pullRequest": {Stage: "build", Step: "testing"}, "release": {Stage: "build", Step: "flake8"}},
+		"ml-python-service":      {"pullRequest": {Stage: "build", Step: "build-testing"}, "release": {Stage: "build", Step: "build-testing"}},
+		"ml-python-training":     {"pullRequest": {Stage: "build", Step: "build-training"}, "release": {Stage: "build", Step: "build-training"}},
+		"python":                 {"pullRequest": {Stage: "build", Step: "build-python-unittest"}, "release": {Stage: "build", Step: "build-python-unittest"}},
+		"scala":                  {"pullRequest": {Stage: "build", Step: "build-sbt-assembly"}, "release": {Stage: "build", Step: "build-sbt-assembly"}},
+		"typescript":             {"pullRequest": {Stage: "build", Step: "build-npm-test"}, "release": {Stage: "build", Step: "build-npm-test"}},
 	}
 
 	buildPack := getBuildPack(lines)
-	stepname := bpm[buildPack][pipeline]
+	var stagename string
+	var stepname string
+	if pipeline == "pullRequest" && overrides.PullRequest.Stage != "" {
+		stagename = overrides.PullRequest.Stage
+		stepname = overrides.PullRequest.Step
+		logger.Debugf("Overriding %s config\n", pipeline)
+	} else if pipeline == "release" && overrides.Release.Stage != "" {
+		stagename = overrides.Release.Stage
+		stepname = overrides.Release.Step
+		logger.Debugf("Overriding %s config\n", pipeline)
+	} else {
+		stagename = bpm[buildPack][pipeline].Stage
+		stepname = bpm[buildPack][pipeline].Step
+	}
+	logger.Debugf("Looking for Stage: %s Step: %s\n", stagename, stepname)
 
-	if buildPack == "" || stepname == "" {
+	if buildPack == "" || stagename == "" || stepname == "" {
 		// We have found a pipeline that lacks a buildPack that we recognise
 		// Fail without breaking the build
-		fmt.Printf("unable to recognise buildPack: %s\n", stepname)
-		fmt.Printf("skipping scan on pipeline: %s\n", pipeline)
+		log.Warnf("unable to recognise buildPack: %s\n", buildPack)
+		log.Warnf("skipping scan on pipeline: %s\n", pipeline)
 		return lines, nil
 	}
 
-	log.WithFields(log.Fields{
-		"pipelineKind": pipeline,
-	}).Info("pipeline")
+	logger.Infof("build: %s", pipeline)
 
-	targetPipelineStart, err := indexOfString(lines, pipeline+":")
+	// Identify the subset of this configuration that represents the desired pipeline
+	targetPipelineStart, err := indexOfNamedPipeline(lines, pipeline)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding pipeline")
 	}
@@ -146,32 +216,94 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string) ([]stri
 		return nil, errors.Wrap(err, "finding end of pipeline")
 	}
 
-	fmt.Printf("targetPipelineStart: %d\n", targetPipelineStart)
-	fmt.Printf("targetPipelineEnd: %d\n", targetPipelineEnd)
-	fmt.Printf("size: %d\n", len(lines))
+	logger.Debugf("targetPipelineStart: %d - %s\n", targetPipelineStart, lines[targetPipelineStart])
+	logger.Debugf("targetPipelineEnd: %d - %s\n", targetPipelineEnd, lines[targetPipelineEnd])
+	logger.Debugf("size: %d\n", len(lines))
 
-	targetPipeline := lines[targetPipelineStart:targetPipelineEnd] // This creates an offset that we need to account for later
+	targetPipeline := lines[targetPipelineStart : targetPipelineEnd+1] // This creates an offset that we need to account for later
 
+	// Identify the point where we should insert environment variables
+	createEnv := false
 	envInsertPoint, err := indexOfEnv(targetPipeline)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding env insert point")
+		// No env section in containerOptions: so insert in pipelineConfig:
+		pipelineConfigStart, err2 := indexOfPipelineConfig(lines)
+		if err2 != nil {
+			return nil, errors.Wrap(err, "finding pipelineConfig")
+		}
+		logger.Debugf("pipelineConfigStart: %d - %s\n", pipelineConfigStart, lines[pipelineConfigStart])
+		pipelinesStart, err3 := indexOfPipelines(lines)
+		if err3 != nil {
+			return nil, errors.Wrap(err, "finding pipelines")
+		}
+		logger.Debugf("pipelinesStart: %d - %s\n", pipelinesStart, lines[pipelinesStart])
+		indexEnv, err4 := indexOfEnv(lines[:pipelinesStart])
+		if err4 != nil {
+			// No existing env: section in pipelineConfig either
+			envInsertPoint = pipelineConfigStart + 1
+			createEnv = true
+		} else {
+			envInsertPoint = indexEnv + 1
+		}
+	} else {
+		envInsertPoint = targetPipelineStart + envInsertPoint + 1
 	}
-	envInsertPoint = targetPipelineStart + envInsertPoint + 1
 
-	somewhereInTargetStep, err := indexOfNamedStep(targetPipeline, stepname)
+	// Identify the subset of this configuration that represents the desired stage
+	targetStagesStart, err := indexOfStages(lines[targetPipelineStart : targetPipelineEnd+1])
+	if err != nil {
+		return nil, errors.Wrap(err, "finding stages:")
+	}
+	targetStagesStart = targetStagesStart + targetPipelineStart
+	logger.Debugf("targetStagesStart: %d - %s\n", targetStagesStart, lines[targetStagesStart])
+	somewhereInTargetStage, err := indexOfNamedStage(lines[targetStagesStart:targetPipelineEnd+1], stagename)
+	if err != nil {
+		// We have found a pipeline that lacks a build stage that we recognise
+		// Fail without breaking the build
+		logger.Debugf("unable to find named Stage: %s\n", stagename)
+		logger.Debugf("skipping scan on pipeline: %s\n", pipeline)
+		return lines, nil
+	}
+	somewhereInTargetStage = somewhereInTargetStage + targetStagesStart // realign to absolute offset
+
+	// scan from next line after name: until we find the start of the next steps: object
+	currentStage, err := indexOfCurrentStage(lines, somewhereInTargetStage)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to find start of stage")
+	}
+	logger.Debugf("currentStage: %d - %s\n", currentStage, lines[currentStage])
+	targetStepsStart, err := indexOfNextSteps(lines[currentStage : targetPipelineEnd+1])
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to find steps:")
+	}
+	targetStepsStart = targetStepsStart + currentStage // realign to absolute offset
+	logger.Debugf("targetStepsStart: %d - %s\n", targetStepsStart, lines[targetStepsStart])
+
+	// find end of steps: section
+	targetStepsEnd, err := indexOfEndOfSteps(lines[:targetPipelineEnd+1], targetStepsStart, countLeadingSpace(lines[targetStepsStart]))
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to find end of steps:")
+	}
+	logger.Debugf("targetStepsEnd: %d - %s\n", targetStepsEnd, lines[targetStepsEnd])
+
+	targetSteps := lines[targetStepsStart : targetStepsEnd+1] // This creates an offset that we need to account for later
+
+	// Identify the line relating to the step we wish to insert after
+
+	somewhereInTargetStep, err := indexOfNamedStep(targetSteps, stepname)
 	if err != nil {
 		// We have found a pipeline that lacks a build step that we recognise
 		// Fail without breaking the build
-		fmt.Printf("unable to find named step: %s\n", stepname)
-		fmt.Printf("skipping scan on pipeline: %s\n", targetPipeline)
+		logger.Debugf("unable to find named Step: %s\n", stepname)
+		logger.Debugf("skipping scan on pipeline: %s\n", pipeline)
 		return lines, nil
 	}
-	somewhereInTargetStep = somewhereInTargetStep + targetPipelineStart // realign to absolute offset
+	somewhereInTargetStep = somewhereInTargetStep + targetStepsStart // realign to absolute offset
 
-	fmt.Printf("somewhereInTargetStep: %d\n", somewhereInTargetStep)
+	logger.Debugf("somewhereInTargetStep: %d - %s\n", somewhereInTargetStep, lines[somewhereInTargetStep])
 
 	// scan from next line after name: until we find the start of the next step
-	nextStep, err := indexOfNextStep(lines[somewhereInTargetStep+1 : targetPipelineEnd])
+	nextStep, err := indexOfNextStep(lines[somewhereInTargetStep+1 : targetPipelineEnd+1])
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to find next step")
 	}
@@ -183,12 +315,12 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string) ([]stri
 	}
 	stepIndent := countLeadingSpace(lines[currentStep])
 	envIndent := countLeadingSpace(lines[envInsertPoint])
-	fmt.Printf("nextStep: %d\n", nextStep)
+	logger.Debugf("nextStep: %d - %s\n", nextStep, lines[nextStep])
 
 	// resolve the offsets
 	absoluteInsertPoint := nextStep + 1
 
-	fmt.Printf("absoluteInsertPoint: %d\n", absoluteInsertPoint)
+	logger.Debugf("absoluteInsertPoint: %d\n", absoluteInsertPoint)
 
 	applicationStep := e.createApplicationStep(stepIndent)
 
@@ -196,11 +328,12 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string) ([]stri
 	copy(lines[absoluteInsertPoint+len(applicationStep):], lines[absoluteInsertPoint:]) // move the subsequent lines down
 	copy(lines[absoluteInsertPoint:], applicationStep)                                  // insert the new step
 
-	envEntry := e.createEnvEntry(envIndent, buildPack)
-	lines = append(lines, envEntry...)                                 // make the slice bigger by the size of the environment variables
-	copy(lines[envInsertPoint+len(envEntry):], lines[envInsertPoint:]) // move the subsequent lines down
-	copy(lines[envInsertPoint:], envEntry)                             // insert the new step
-
+	if !envExists(lines, envInsertPoint) {
+		envEntry := e.createEnvEntry(envIndent, buildPack, createEnv)
+		lines = append(lines, envEntry...)                                 // make the slice bigger by the size of the environment variables
+		copy(lines[envInsertPoint+len(envEntry):], lines[envInsertPoint:]) // move the subsequent lines down
+		copy(lines[envInsertPoint:], envEntry)                             // insert the new step
+	}
 	return lines, nil
 }
 
@@ -210,7 +343,7 @@ func (e *Patcher) writeProjectConfig(lines []string, pipelineConfigPath string) 
 		return errors.Wrapf(err, "unable to backup '%s'", pipelineConfigPath)
 	}
 
-	logger.Infof("writing '%s'", pipelineConfigPath)
+	logger.Debugf("writing '%s'", pipelineConfigPath)
 
 	file, err := os.OpenFile(pipelineConfigPath, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
@@ -253,12 +386,15 @@ func (e *Patcher) createApplicationStep(indent int) []string {
 	return step
 }
 
-func (e *Patcher) createEnvEntry(indent int, buildPack string) []string {
+func (e *Patcher) createEnvEntry(indent int, buildPack string, create bool) []string {
 	// set correct whitespace for indent
 	ws := nspaces(indent)
 
 	// construct the pipeline syntax for the environment variable
 	env := []string{}
+	if create {
+		env = append(env, ws+"env:")
+	}
 	env = append(env, ws+"- name: BUILDPACK_NAME")
 	env = append(env, ws+"  value: "+buildPack)
 	return env
@@ -272,7 +408,28 @@ func nspaces(n int) string {
 	return string(s)
 }
 
-// indexOfNamedStep finds the first instance of a named step with the given name
+// indexOfNamedStage finds the first instance of a named stage with the given pipeline
+func indexOfNamedStage(lines []string, name string) (int, error) {
+	stageIndent := countLeadingSpace(lines[0])
+	for l, line := range lines {
+		isTopLevel, err := hasMatchingIndent(line, stageIndent)
+		if err != nil {
+			return 0, errors.Wrapf(err, "parsing match: '%s'", line)
+		}
+		isFirstIndent, err := hasMatchingIndent(line, stageIndent+2)
+		if err != nil {
+			return 0, errors.Wrapf(err, "parsing match: '%s'", line)
+		}
+		if isTopLevel || isFirstIndent {
+			if isNamedStage(line, name) {
+				return l, nil
+			}
+		}
+	}
+	return 0, errors.Errorf("unable to find stage '%s'", name)
+}
+
+// indexOfNamedStep finds the first instance of a named step with the given stage
 func indexOfNamedStep(lines []string, stepname string) (int, error) {
 	for l, line := range lines {
 		if strings.Contains(line, stepname) && strings.Contains(line, "name:") {
@@ -282,8 +439,18 @@ func indexOfNamedStep(lines []string, stepname string) (int, error) {
 	return 0, errors.Errorf("unable to find step '%s'", stepname)
 }
 
-// hasMatchingIndent indicates whether a given string s has an initial indent of length i
-func isRootOfStep(s string) (bool, error) {
+// indexOfNamedPipeline finds the first instance of a named pipeline
+func indexOfNamedPipeline(lines []string, pipeline string) (int, error) {
+	for l, line := range lines {
+		if strings.Contains(line, pipeline+":") {
+			return l, nil
+		}
+	}
+	return 0, errors.Errorf("unable to find pipeline '%s'", pipeline)
+}
+
+// isRootOfSection indicates whether a given string s is the root of a section
+func isRootOfSection(s string) (bool, error) {
 	exp := `^\s+-\s\S+:`
 	return regexp.MatchString(exp, s)
 }
@@ -295,27 +462,37 @@ func indexOfString(lines []string, s string) (int, error) {
 			return l, nil
 		}
 	}
-	return 0, errors.Errorf("unable to find step '%s'", s)
+	return 0, errors.Errorf("unable to find '%s'", s)
 }
 
-// indexOfNextStep returns the index of the first line of a new step or the end of the list
+// indexOfNextStep returns the index of the first line of a new steps: object
 func indexOfNextStep(lines []string) (int, error) {
 	for l, line := range lines {
-		match, err := isRootOfStep(line)
+		match, err := isRootOfSection(line)
 		if err != nil {
-			return 0, errors.Wrapf(err, "finding next step: '%s'", line)
+			return 0, errors.Wrapf(err, "finding next Step: '%s'", line)
 		}
 		if match {
 			return l, nil
 		}
 	}
-	return len(lines) - 1, nil
+	return len(lines), nil
 }
 
-// indexOfCurrentStep returns the index of the first line of the step containing this index
-func indexOfCurrentStep(lines []string, start int) (int, error) {
+// indexOfNextSteps returns the index of the first line of a new step or the end of the list
+func indexOfNextSteps(lines []string) (int, error) {
+	for l, line := range lines {
+		if strings.Contains(line, "steps:") {
+			return l, nil
+		}
+	}
+	return 0, errors.Errorf("unable to find steps:")
+}
+
+// indexOfCurrentSection returns the index of the first line of the section containing this index
+func indexOfCurrentSection(lines []string, start int) (int, error) {
 	for l := start; l > 0; l-- {
-		match, err := isRootOfStep(lines[l])
+		match, err := isRootOfSection(lines[l])
 		if err != nil {
 			return 0, errors.Wrapf(err, "checking root status of line: '%s'", lines[l])
 		}
@@ -324,6 +501,16 @@ func indexOfCurrentStep(lines []string, start int) (int, error) {
 		}
 	}
 	return 0, errors.Errorf("unable to find start of step containing '%d'", start)
+}
+
+// indexOfCurrentStage returns the index of the first line of the stage containing this index
+func indexOfCurrentStage(lines []string, start int) (int, error) {
+	return indexOfCurrentSection(lines, start)
+}
+
+// indexOfCurrentStep returns the index of the first line of the step containing this index
+func indexOfCurrentStep(lines []string, start int) (int, error) {
+	return indexOfCurrentSection(lines, start)
 }
 
 // hasMatchingIndent indicates whether a given string s has an initial indent of length i
@@ -348,6 +535,39 @@ func indexOfEndOfPipeline(lines []string, start int, indent int) (int, error) {
 	}
 	// end of file
 	return len(lines) - 2, nil // account for last line being blank
+}
+
+// indexOfEndOfSteps finds the index of the last entry in the current steps:, or the end of the list
+func indexOfEndOfSteps(lines []string, start int, indent int) (int, error) {
+	if start >= len(lines) {
+		return 0, errors.Errorf("start value too big '%d'", start)
+	}
+	for i := start; i < len(lines); i++ {
+		thisindent := countLeadingSpace(lines[i])
+		if thisindent < indent {
+			return i - 1, nil // report the index of the previous line
+		}
+	}
+	// end of file
+	return len(lines) - 1, nil
+}
+
+// indexOfEndOfStage finds the index of the last entry in the current stage, or the end of the list if no subsequent stage is defined
+func indexOfEndOfStage(lines []string, start int, indent int) (int, error) {
+	if start >= len(lines) {
+		return 0, errors.Errorf("start value too big '%d'", start)
+	}
+	for i := start; i < len(lines); i++ {
+		match, err := hasMatchingIndent(lines[i], indent)
+		if err != nil {
+			return 0, errors.Wrapf(err, "whilst parsing line: '%s'", lines[i])
+		}
+		if match {
+			return i - 1, nil // report the index of the previous line
+		}
+	}
+	// end of file
+	return len(lines) - 1, nil
 }
 
 // countLeadingSpace measures the indent of the given string
@@ -375,10 +595,35 @@ func getBuildPack(lines []string) string {
 
 // indexOfEnv finds the first instance of an env: entry
 func indexOfEnv(lines []string) (int, error) {
-	for l, line := range lines {
-		if strings.Contains(line, "env:") {
-			return l, nil
-		}
-	}
-	return 0, errors.Errorf("unable to find env: entry")
+	return indexOfString(lines, "env:")
+}
+
+// indexOfPipelineConfig finds the start of the pipelineConfig: entry
+func indexOfPipelineConfig(lines []string) (int, error) {
+	return indexOfString(lines, "pipelineConfig:")
+}
+
+// indexOfPipelines finds the start of the pipelines: entry
+func indexOfPipelines(lines []string) (int, error) {
+	return indexOfString(lines, "pipelines:")
+}
+
+// indexOfPipeline finds the start of the pipeline: entry
+func indexOfPipeline(lines []string) (int, error) {
+	return indexOfString(lines, "pipeline:")
+}
+
+// indexOfPipeline finds the start of the pipeline: entry
+func indexOfStages(lines []string) (int, error) {
+	return indexOfString(lines, "stages:")
+}
+
+// envExists checks if the buildpack env variable is already set
+func envExists(lines []string, index int) bool {
+	return strings.Contains(lines[index], "name:") && strings.Contains(lines[index], "BUILDPACK_NAME")
+}
+
+// isNamedStage checks if this line contains the name: declaration for stage 'name'
+func isNamedStage(line string, name string) bool {
+	return strings.Contains(line, "name:") && strings.Contains(line, name)
 }

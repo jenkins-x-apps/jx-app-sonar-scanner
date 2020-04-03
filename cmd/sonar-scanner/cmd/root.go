@@ -1,13 +1,14 @@
 package cmd
 
 import (
+	"os"
+	"strings"
+
 	"github.com/jenkins-x-apps/jx-app-sonar-scanner/internal/logging"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"os"
-	"strings"
 )
 
 const (
@@ -44,6 +45,7 @@ func configureLogging(cmd *cobra.Command, args []string) {
 	// Output to stdout instead of the default stderr
 	// Can be any io.Writer, see below for File example
 	log.SetOutput(os.Stdout)
+	log.SetFormatter(&log.JSONFormatter{})
 
 	logLevel := viper.GetString(logLevelOptionName)
 	err := logging.SetLevel(logLevel)

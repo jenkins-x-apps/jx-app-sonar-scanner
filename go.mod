@@ -31,6 +31,7 @@ require (
 	golang.org/x/text v0.3.2 // indirect
 	google.golang.org/appengine v1.5.0 // indirect
 	gopkg.in/AlecAivazis/survey.v1 v1.8.3 // indirect
+	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.0.0-20190718062839-c8a0b81cb10e // indirect
 	k8s.io/apimachinery v0.0.0-20190717022731-0bb8574e0887 // indirect
 	k8s.io/client-go v11.0.0+incompatible // indirect

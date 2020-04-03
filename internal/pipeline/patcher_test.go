@@ -46,8 +46,19 @@ func TestPatcher_ConfigurePipeline(t *testing.T) {
 		{"go-none", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", false, false}, false},
 		{"go-no-token", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "", true, true}, false},
 		{"go-no-server", fields{"", "", "12345", true, true}, false},
+		{"go-override", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"go-skip", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"gradle", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"javascript", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
 		{"maven", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"ml-python-gpu-service", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"ml-python-gpu-training", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"ml-python-gpu-training-with-env", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"ml-python-service", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"ml-python-training", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
 		{"python", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"scala", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"typescript", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
 		{"unknown-step-name", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
 		{"unknown-builder", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
 	}
@@ -99,7 +110,8 @@ func Test_indexOfEndOfPipeline(t *testing.T) {
 	}{
 		{"indexEndOfPipeline1", "indexEndOfPipeline1.yml", args{11, 4}, 86, false}, // Zero-referenced, start AFTER beginnning of this pipeline
 		{"indexEndOfPipeline2", "indexEndOfPipeline1.yml", args{88, 4}, 182, false},
-		{"indexEndOfPipeline2", "indexEndOfPipeline2.yml", args{8, 4}, 71, false},
+		{"indexEndOfPipeline3", "indexEndOfPipeline2.yml", args{8, 4}, 71, false},
+		{"indexEndOfPipeline4", "indexEndOfPipeline3.yml", args{8, 4}, 75, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
