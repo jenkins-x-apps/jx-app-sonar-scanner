@@ -1,0 +1,7 @@
+---
+pullRequest:
+    stage: ci
+    step: make-build
+release:
+    stage: release
+    step: make-release
