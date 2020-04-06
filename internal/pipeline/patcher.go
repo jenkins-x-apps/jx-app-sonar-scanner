@@ -178,16 +178,18 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string, overrid
 	}
 
 	buildPack := getBuildPack(lines)
+	logger.Infof("Detected buildpack %s\n", buildPack)
+
 	var stagename string
 	var stepname string
 	if pipeline == "pullRequest" && overrides.PullRequest.Stage != "" {
 		stagename = overrides.PullRequest.Stage
 		stepname = overrides.PullRequest.Step
-		logger.Debugf("Overriding %s config\n", pipeline)
+		logger.Infof("Overriding %s config\n", pipeline)
 	} else if pipeline == "release" && overrides.Release.Stage != "" {
 		stagename = overrides.Release.Stage
 		stepname = overrides.Release.Step
-		logger.Debugf("Overriding %s config\n", pipeline)
+		logger.Infof("Overriding %s config\n", pipeline)
 	} else {
 		stagename = bpm[buildPack][pipeline].Stage
 		stepname = bpm[buildPack][pipeline].Step
@@ -203,6 +205,9 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string, overrid
 	}
 
 	logger.Infof("build: %s", pipeline)
+
+	// Set up sonar-project.properties for this buildpack
+	e.writeProjectProperties(buildPack)
 
 	// Identify the subset of this configuration that represents the desired pipeline
 	targetPipelineStart, err := indexOfNamedPipeline(lines, pipeline)
@@ -357,6 +362,25 @@ func (e *Patcher) writeProjectConfig(lines []string, pipelineConfigPath string) 
 		}
 	}
 	return nil
+}
+
+func (e *Patcher) writeProjectProperties(buildpack string) {
+	sonarPropertiesPath := filepath.Join(e.sourceDir, "sonar-project.properties")
+	buildpackPropertiesFilename := buildpack + ".sonar-project.properties"
+	defaultPropertiesPath := filepath.Join("/sqproperties", buildpackPropertiesFilename)
+
+	if util.Exists(sonarPropertiesPath) {
+		log.WithFields(log.Fields{
+			"sonarscanproperties": true,
+		}).Warn("Using sonar-project.properties file from project source")
+	} else {
+		err := util.CopyFile(defaultPropertiesPath, sonarPropertiesPath)
+		if err == nil {
+			logger.Infof("Created default sonar-project.properties for buildpack '%s'", buildpack)
+		} else {
+			logger.Warnf("%s", err)
+		}
+	}
 }
 
 func (e *Patcher) createApplicationStep(indent int) []string {

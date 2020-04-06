@@ -22,17 +22,16 @@ if [[ ${IS_RELEASE_PIPELINE} == "true" ]] ; then
 fi
 env
 ls -laR
+if [[ -f "sonar-project.properties" ]]; then
+    cat sonar-project.properties
+fi
 # Only activate in preview builds or the first stage of a release
 if [[ ${IS_PREVIEW_PIPELINE} == "true" ]] || [[ ${IS_RELEASE_PIPELINE} == "true" ]] ; then
     if [[ ${IS_PREVIEW_PIPELINE} == "true" ]] ; then
         if [[ ${SCAN_ON_PREVIEW} == "true" ]] ; then
             echo "Sonarqube is scanning files..."
             echo "BuildPack: " ${BUILDPACK_NAME}
-            if [[ ${BUILDPACK_NAME} == "maven" ]] ; then
-                /opt/sonar/bin/sonar-scanner "-Dsonar.host.url=${SONARQUBE_SERVER}" "-Dsonar.projectKey=${JOB_NAME}" "-Dsonar.login=${SONAR_TOKEN}" "-Dsonar.language=java" "-Dsonar.sources=src/main/java" "-Dsonar.java.binaries=target/classes" "-Dsonar.scm.provider=git"
-            else
-                /opt/sonar/bin/sonar-scanner "-Dsonar.host.url=${SONARQUBE_SERVER}" "-Dsonar.projectKey=${JOB_NAME}" "-Dsonar.login=${SONAR_TOKEN}" "-Dsonar.scm.provider=git"
-            fi
+            /opt/sonar/bin/sonar-scanner "-Dsonar.host.url=${SONARQUBE_SERVER}" "-Dsonar.projectKey=${JOB_NAME}" "-Dsonar.login=${SONAR_TOKEN}" "-Dsonar.scm.provider=git"
         else
             echo "Sonarqube scanning disabled in preview builds."
         fi
@@ -41,11 +40,7 @@ if [[ ${IS_PREVIEW_PIPELINE} == "true" ]] || [[ ${IS_RELEASE_PIPELINE} == "true"
         if [[ ${SCAN_ON_RELEASE} == "true" ]] ; then
             echo "Sonarqube is scanning files..."
             echo "BuildPack: " ${BUILDPACK_NAME}
-            if [[ ${BUILDPACK_NAME} == "maven" ]] ; then
-                /opt/sonar/bin/sonar-scanner "-Dsonar.host.url=${SONARQUBE_SERVER}" "-Dsonar.projectKey=${JOB_NAME}" "-Dsonar.login=${SONAR_TOKEN}" "-Dsonar.language=java" "-Dsonar.sources=src/main/java" "-Dsonar.java.binaries=target/classes" "-Dsonar.scm.provider=git"
-            else
-                /opt/sonar/bin/sonar-scanner "-Dsonar.host.url=${SONARQUBE_SERVER}" "-Dsonar.projectKey=${JOB_NAME}" "-Dsonar.login=${SONAR_TOKEN}" "-Dsonar.scm.provider=git"
-            fi
+            /opt/sonar/bin/sonar-scanner "-Dsonar.host.url=${SONARQUBE_SERVER}" "-Dsonar.projectKey=${JOB_NAME}" "-Dsonar.login=${SONAR_TOKEN}" "-Dsonar.scm.provider=git"
         else
             echo "Sonarqube scanning disabled in release builds."
         fi
