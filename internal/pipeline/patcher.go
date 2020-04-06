@@ -206,9 +206,6 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string, overrid
 
 	logger.Infof("build: %s", pipeline)
 
-	// Set up sonar-project.properties for this buildpack
-	e.writeProjectProperties(buildPack)
-
 	// Identify the subset of this configuration that represents the desired pipeline
 	targetPipelineStart, err := indexOfNamedPipeline(lines, pipeline)
 	if err != nil {
@@ -364,6 +361,7 @@ func (e *Patcher) writeProjectConfig(lines []string, pipelineConfigPath string) 
 	return nil
 }
 
+// Can't use this until metapipeline shares filesystem with build pipeline
 func (e *Patcher) writeProjectProperties(buildpack string) {
 	sonarPropertiesPath := filepath.Join(e.sourceDir, "sonar-project.properties")
 	buildpackPropertiesFilename := buildpack + ".sonar-project.properties"

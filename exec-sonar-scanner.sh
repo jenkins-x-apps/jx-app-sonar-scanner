@@ -22,6 +22,11 @@ if [[ ${IS_RELEASE_PIPELINE} == "true" ]] ; then
 fi
 env
 ls -laR
+
+if [[ ! -f "sonar-project.properties" ]]; then
+    echo "Setting up default sonar-project.properties file for buildpack " ${BUILDPACK_NAME}
+    cp /sqproperties/${BUILDPACK_NAME}.sonar-project.properties sonar-project.properties || true
+fi
 if [[ -f "sonar-project.properties" ]]; then
     cat sonar-project.properties
 fi
