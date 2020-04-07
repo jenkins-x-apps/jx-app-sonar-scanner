@@ -200,7 +200,7 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string, overrid
 		// We have found a pipeline that lacks a buildPack that we recognise
 		// Fail without breaking the build
 		log.Warnf("unable to recognise buildPack: %s\n", buildPack)
-		log.Warnf("skipping scan on pipeline: %s\n", pipeline)
+		log.Warnf("skipping scan on pipeline: %s [1]\n", pipeline)
 		return lines, nil
 	}
 
@@ -263,7 +263,7 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string, overrid
 		// We have found a pipeline that lacks a build stage that we recognise
 		// Fail without breaking the build
 		logger.Debugf("unable to find named Stage: %s\n", stagename)
-		logger.Debugf("skipping scan on pipeline: %s\n", pipeline)
+		logger.Debugf("skipping scan on pipeline: %s [2]\n", pipeline)
 		return lines, nil
 	}
 	somewhereInTargetStage = somewhereInTargetStage + targetStagesStart // realign to absolute offset
@@ -297,7 +297,7 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string, overrid
 		// We have found a pipeline that lacks a build step that we recognise
 		// Fail without breaking the build
 		logger.Debugf("unable to find named Step: %s\n", stepname)
-		logger.Debugf("skipping scan on pipeline: %s\n", pipeline)
+		logger.Debugf("skipping scan on pipeline: %s [3]\n", pipeline)
 		return lines, nil
 	}
 	somewhereInTargetStep = somewhereInTargetStep + targetStepsStart // realign to absolute offset
@@ -544,7 +544,7 @@ func hasMatchingIndent(s string, i int) (bool, error) {
 // indexOfEndOfPipeline finds the index of the last entry in the current pipeline, or the end of the file if no subsequent pipeline is defined
 func indexOfEndOfPipeline(lines []string, start int, indent int) (int, error) {
 	if start >= len(lines) {
-		return 0, errors.Errorf("start value too big '%d'", start)
+		return 0, errors.Errorf("start value too big '%d' [1]", start)
 	}
 	for i := start; i < len(lines); i++ {
 		match, err := hasMatchingIndent(lines[i], indent)
@@ -562,7 +562,7 @@ func indexOfEndOfPipeline(lines []string, start int, indent int) (int, error) {
 // indexOfEndOfSteps finds the index of the last entry in the current steps:, or the end of the list
 func indexOfEndOfSteps(lines []string, start int, indent int) (int, error) {
 	if start >= len(lines) {
-		return 0, errors.Errorf("start value too big '%d'", start)
+		return 0, errors.Errorf("start value too big '%d' [2]", start)
 	}
 	for i := start; i < len(lines); i++ {
 		thisindent := countLeadingSpace(lines[i])
@@ -577,7 +577,7 @@ func indexOfEndOfSteps(lines []string, start int, indent int) (int, error) {
 // indexOfEndOfStage finds the index of the last entry in the current stage, or the end of the list if no subsequent stage is defined
 func indexOfEndOfStage(lines []string, start int, indent int) (int, error) {
 	if start >= len(lines) {
-		return 0, errors.Errorf("start value too big '%d'", start)
+		return 0, errors.Errorf("start value too big '%d' [3]", start)
 	}
 	for i := start; i < len(lines); i++ {
 		match, err := hasMatchingIndent(lines[i], indent)
