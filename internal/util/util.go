@@ -94,12 +94,17 @@ func FileExists(filename string) bool {
 // AppropriateToScan checks the current pipeline execution environment to see
 // if it is appropriate to insert the app.
 func AppropriateToScan() bool {
-	// Should we be attempting to patch in this execution scope?
 	configFileExists := FileExists(".pre-commit-config.yaml")
-	if os.Getenv("PIPELINE_KIND") == "pullrequest" && !configFileExists {
+	pipelineKind := os.Getenv("PIPELINE_KIND")
+	return appropriateToScan(configFileExists, pipelineKind)
+}
+
+func appropriateToScan(infrastructure bool, pipelineKind string) bool {
+	// Should we be attempting to patch in this execution scope?
+	if pipelineKind == "pullrequest" && !infrastructure {
 		fmt.Println("Detected preview build. Preparing to scan...")
 		return true
-	} else if os.Getenv("PIPELINE_KIND") == "release" && !configFileExists {
+	} else if pipelineKind == "release" && !infrastructure {
 		fmt.Println("Detected release build. Preparing to scan...")
 		return true
 	} else {

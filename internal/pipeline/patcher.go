@@ -362,24 +362,24 @@ func (e *Patcher) writeProjectConfig(lines []string, pipelineConfigPath string) 
 }
 
 // Can't use this until metapipeline shares filesystem with build pipeline
-func (e *Patcher) writeProjectProperties(buildpack string) {
-	sonarPropertiesPath := filepath.Join(e.sourceDir, "sonar-project.properties")
-	buildpackPropertiesFilename := buildpack + ".sonar-project.properties"
-	defaultPropertiesPath := filepath.Join("/sqproperties", buildpackPropertiesFilename)
+// func (e *Patcher) writeProjectProperties(buildpack string) {
+// 	sonarPropertiesPath := filepath.Join(e.sourceDir, "sonar-project.properties")
+// 	buildpackPropertiesFilename := buildpack + ".sonar-project.properties"
+// 	defaultPropertiesPath := filepath.Join("/sqproperties", buildpackPropertiesFilename)
 
-	if util.Exists(sonarPropertiesPath) {
-		log.WithFields(log.Fields{
-			"sonarscanproperties": true,
-		}).Warn("Using sonar-project.properties file from project source")
-	} else {
-		err := util.CopyFile(defaultPropertiesPath, sonarPropertiesPath)
-		if err == nil {
-			logger.Infof("Created default sonar-project.properties for buildpack '%s'", buildpack)
-		} else {
-			logger.Warnf("%s", err)
-		}
-	}
-}
+// 	if util.Exists(sonarPropertiesPath) {
+// 		log.WithFields(log.Fields{
+// 			"sonarscanproperties": true,
+// 		}).Warn("Using sonar-project.properties file from project source")
+// 	} else {
+// 		err := util.CopyFile(defaultPropertiesPath, sonarPropertiesPath)
+// 		if err == nil {
+// 			logger.Infof("Created default sonar-project.properties for buildpack '%s'", buildpack)
+// 		} else {
+// 			logger.Warnf("%s", err)
+// 		}
+// 	}
+// }
 
 func (e *Patcher) createApplicationStep(indent int) []string {
 	// set correct whitespace for indent

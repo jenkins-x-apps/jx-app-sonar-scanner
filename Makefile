@@ -33,7 +33,7 @@ $(PLATFORMS):
 
 .PHONY : test
 test: ## Runs unit tests
-	$(GO_VARS) go test -v ./...
+	$(GO_VARS) go test -coverprofile=coverage.out -v ./...
 
 .PHONY : fmt
 fmt: ## Re-formates Go source files according to standard

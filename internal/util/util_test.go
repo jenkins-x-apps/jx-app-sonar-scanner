@@ -1,10 +1,11 @@
 package util
 
 import (
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestContains(t *testing.T) {
@@ -61,4 +62,27 @@ func TestApplyWithBackoffSuccess(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, 3, callCount)
+}
+
+func Test_appropriateToScan(t *testing.T) {
+	type args struct {
+		infrastructure bool
+		pipelineKind   string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{"pullrequest", args{false, "pullrequest"}, true},
+		{"release", args{false, "release"}, true},
+		{"infrastructure", args{true, "release"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := appropriateToScan(tt.args.infrastructure, tt.args.pipelineKind); got != tt.want {
+				t.Errorf("appropriateToScan() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

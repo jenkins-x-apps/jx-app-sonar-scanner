@@ -75,7 +75,6 @@ func verify() sonarutil.MultiError {
 	validationErrors := sonarutil.MultiError{}
 
 	validationErrors.Collect(sonarutil.IsNotEmpty(viper.GetString(sqServerOptionName), sqServerOptionName))
-	//	validationErrors.Collect(sonarutil.IsNotEmpty(viper.GetString(apiKeyOptionName), apiKeyOptionName))
 
 	return validationErrors
 }

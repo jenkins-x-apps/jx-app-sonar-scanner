@@ -10,3 +10,4 @@ bin/
 tmp/
 build/
 charts/jx-app-jacoco/*.tgz
+coverage.out

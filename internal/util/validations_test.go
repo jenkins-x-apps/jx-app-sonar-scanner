@@ -2,9 +2,10 @@ package util
 
 import (
 	"fmt"
-	"github.com/magiconair/properties/assert"
 	"strings"
 	"testing"
+
+	"github.com/magiconair/properties/assert"
 )
 
 func Test_IsBool(t *testing.T) {
@@ -31,5 +32,50 @@ func Test_IsBool(t *testing.T) {
 		}
 
 		assert.Equal(t, testBool.errors, errors, fmt.Sprintf("Unexpected error for %s", testBool.value))
+	}
+}
+
+func TestIsNotEmpty(t *testing.T) {
+	type args struct {
+		value interface{}
+		key   string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{"notempty", args{value: "somevalue", key: "somekey"}, false},
+		{"empty", args{value: "", key: "somekey"}, true},
+		{"nil", args{value: nil, key: "somekey"}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := IsNotEmpty(tt.args.value, tt.args.key); (err != nil) != tt.wantErr {
+				t.Errorf("IsNotEmpty() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestIsInt(t *testing.T) {
+	type args struct {
+		value interface{}
+		key   string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{"int", args{value: "3", key: "somekey"}, false},
+		{"notint", args{value: "string", key: "somekey"}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := IsInt(tt.args.value, tt.args.key); (err != nil) != tt.wantErr {
+				t.Errorf("IsInt() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
