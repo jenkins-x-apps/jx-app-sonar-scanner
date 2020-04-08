@@ -17,6 +17,10 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+const (
+	userOverridesFile string = ".jx-app-sonar-scanner.yaml"
+)
+
 var (
 	logger = logging.AppLogger().WithFields(log.Fields{"component": "meta-pipeline-extender"})
 )
@@ -31,8 +35,8 @@ type Patcher struct {
 	scanonrelease bool
 }
 
-// Override represents a user supplied set of override values
-type Override struct {
+// UserOverrides represents a user supplied set of UserOverrides values
+type UserOverrides struct {
 	Verbose     bool      `yaml:"verbose,omitempty"`
 	Skip        bool      `yaml:"skip,omitempty"`
 	PullRequest BuildStep `yaml:"pullRequest,omitempty"`
@@ -76,32 +80,20 @@ func (e *Patcher) ConfigurePipeline() error {
 		effectiveConfig = fmt.Sprintf("jenkins-x-%s-effective.yml", e.context)
 	}
 
-	overrideFileName := ".jx-app-sonar-scanner.yaml"
+	userOverrides, err := e.getUserOverrides(userOverridesFile)
+	if err != nil {
+		return errors.Wrap(err, "unable to get user Overrides")
+	}
 
-	var overrides Override
-
-	overrideFilePath := filepath.Join(e.sourceDir, overrideFileName)
-	if util.Exists(overrideFilePath) {
-		// User has set local overrides
-		overrideFileContent, err := ioutil.ReadFile(overrideFilePath)
-		if err != nil {
-			return errors.Errorf("failed to open '%s'", overrideFilePath)
-		}
-
-		err = yaml.Unmarshal(overrideFileContent, &overrides)
-		if err != nil {
-			return errors.Errorf("unable to parse '%s'", overrideFilePath)
-		}
-		if overrides.Verbose {
-			debug = true
-			log.SetLevel(log.DebugLevel)
-		}
-		if overrides.Skip {
-			log.WithFields(log.Fields{
-				"sonarscanskip": true,
-			}).Warn("Skipping sonar scan due to developer override")
-			return nil
-		}
+	if userOverrides.Verbose {
+		debug = true
+		log.SetLevel(log.DebugLevel)
+	}
+	if userOverrides.Skip {
+		log.WithFields(log.Fields{
+			"sonarscanskip": true,
+		}).Warn("Skipping sonar scan due to developer UserOverrides")
+		return nil
 	}
 
 	pipelineConfigPath := filepath.Join(e.sourceDir, effectiveConfig)
@@ -117,10 +109,7 @@ func (e *Patcher) ConfigurePipeline() error {
 	}
 
 	if debug {
-		// Dump pipeline to log to check input format
-		fmt.Println("---------------------------INPUT PIPELINE---------------------------")
-		fmt.Println(string(content))
-		fmt.Println("--------------------------------------------------------------------")
+		dumpInput(content)
 	}
 
 	lines := strings.Split(string(content), "\n")
@@ -130,14 +119,14 @@ func (e *Patcher) ConfigurePipeline() error {
 	}
 
 	if e.scanonpreview {
-		lines, err = e.insertApplicationStep(lines, "pullRequest", overrides)
+		lines, err = e.insertApplicationStep(lines, "pullRequest", userOverrides)
 		if err != nil {
 			return errors.Wrap(err, "unable to enhance preview pipeline with sonar-scanner configuration")
 		}
 	}
 
 	if e.scanonrelease {
-		lines, err = e.insertApplicationStep(lines, "release", overrides)
+		lines, err = e.insertApplicationStep(lines, "release", userOverrides)
 		if err != nil {
 			return errors.Wrap(err, "unable to enhance release pipeline with sonar-scanner configuration")
 		}
@@ -149,19 +138,32 @@ func (e *Patcher) ConfigurePipeline() error {
 	}
 
 	if debug {
-		// Dump pipeline to log to check output format
-		fmt.Println("--------------------------OUTPUT PIPELINE---------------------------")
-		content, err = ioutil.ReadFile(pipelineConfigPath)
-		if err != nil {
-			return errors.Errorf("unable to display pipeline config '%s'", pipelineConfigPath)
-		}
-		fmt.Println(string(content))
-		fmt.Println("--------------------------------------------------------------------")
+		dumpOutput(pipelineConfigPath)
 	}
 	return nil
 }
 
-func (e *Patcher) insertApplicationStep(lines []string, pipeline string, overrides Override) ([]string, error) {
+// getUserOverrides returns a set of user defined properties if one exists in the source code
+func (e *Patcher) getUserOverrides(file string) (UserOverrides, error) {
+	userOverrides := UserOverrides{}
+	userOverridesFilePath := filepath.Join(e.sourceDir, file)
+	if util.Exists(userOverridesFilePath) {
+		// User has set local UserOverrides
+		userOverridesFileContent, err := ioutil.ReadFile(userOverridesFilePath)
+		if err != nil {
+			return userOverrides, errors.Errorf("failed to open '%s'", userOverridesFilePath)
+		}
+
+		err = yaml.Unmarshal(userOverridesFileContent, &userOverrides)
+		if err != nil {
+			return userOverrides, errors.Errorf("unable to parse '%s'", userOverridesFilePath)
+		}
+	}
+	return userOverrides, nil
+}
+
+// insertApplicationStep inserts a new step into the pipeline to trigger the scanner
+func (e *Patcher) insertApplicationStep(lines []string, pipeline string, userOverrides UserOverrides) ([]string, error) {
 
 	bpm := map[string]map[string]BuildStep{
 		"go":                     {"pullRequest": {Stage: "build", Step: "build-make-linux"}, "release": {Stage: "build", Step: "build-make-build"}},
@@ -182,13 +184,13 @@ func (e *Patcher) insertApplicationStep(lines []string, pipeline string, overrid
 
 	var stagename string
 	var stepname string
-	if pipeline == "pullRequest" && overrides.PullRequest.Stage != "" {
-		stagename = overrides.PullRequest.Stage
-		stepname = overrides.PullRequest.Step
+	if pipeline == "pullRequest" && userOverrides.PullRequest.Stage != "" {
+		stagename = userOverrides.PullRequest.Stage
+		stepname = userOverrides.PullRequest.Step
 		logger.Infof("Overriding %s config\n", pipeline)
-	} else if pipeline == "release" && overrides.Release.Stage != "" {
-		stagename = overrides.Release.Stage
-		stepname = overrides.Release.Step
+	} else if pipeline == "release" && userOverrides.Release.Stage != "" {
+		stagename = userOverrides.Release.Stage
+		stepname = userOverrides.Release.Step
 		logger.Infof("Overriding %s config\n", pipeline)
 	} else {
 		stagename = bpm[buildPack][pipeline].Stage
@@ -360,26 +362,6 @@ func (e *Patcher) writeProjectConfig(lines []string, pipelineConfigPath string) 
 	}
 	return nil
 }
-
-// Can't use this until metapipeline shares filesystem with build pipeline
-// func (e *Patcher) writeProjectProperties(buildpack string) {
-// 	sonarPropertiesPath := filepath.Join(e.sourceDir, "sonar-project.properties")
-// 	buildpackPropertiesFilename := buildpack + ".sonar-project.properties"
-// 	defaultPropertiesPath := filepath.Join("/sqproperties", buildpackPropertiesFilename)
-
-// 	if util.Exists(sonarPropertiesPath) {
-// 		log.WithFields(log.Fields{
-// 			"sonarscanproperties": true,
-// 		}).Warn("Using sonar-project.properties file from project source")
-// 	} else {
-// 		err := util.CopyFile(defaultPropertiesPath, sonarPropertiesPath)
-// 		if err == nil {
-// 			logger.Infof("Created default sonar-project.properties for buildpack '%s'", buildpack)
-// 		} else {
-// 			logger.Warnf("%s", err)
-// 		}
-// 	}
-// }
 
 func (e *Patcher) createApplicationStep(indent int) []string {
 	// set correct whitespace for indent
@@ -648,4 +630,23 @@ func envExists(lines []string, index int) bool {
 // isNamedStage checks if this line contains the name: declaration for stage 'name'
 func isNamedStage(line string, name string) bool {
 	return strings.Contains(line, "name:") && strings.Contains(line, name)
+}
+
+// dumpInput writes pipeline to log to check input format
+func dumpInput(content []byte) {
+	// Dump pipeline to log to check input format
+	fmt.Println("---------------------------INPUT PIPELINE---------------------------")
+	fmt.Println(string(content))
+	fmt.Println("--------------------------------------------------------------------")
+}
+
+// dumpOutput writes pipeline to log to check output format
+func dumpOutput(path string) {
+	fmt.Println("--------------------------OUTPUT PIPELINE---------------------------")
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		logger.Fatalf("unable to display pipeline config '%s'", path)
+	}
+	fmt.Println(string(content))
+	fmt.Println("--------------------------------------------------------------------")
 }

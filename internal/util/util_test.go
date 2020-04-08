@@ -124,6 +124,52 @@ func TestCopyFile(t *testing.T) {
 	assert.True(t, equal)
 }
 
+func TestCopyFileMissingSource(t *testing.T) {
+	testDataLocation := "../../test/"
+	testRunName := "run-copyfile"
+	original := filepath.Join(testDataLocation, "files", "missing")
+
+	// Create a temporary directory for testing and ensure it is cleaned up after
+	tmpDirs := make([]string, 0)
+	defer func() {
+		for _, dir := range tmpDirs {
+			err := os.RemoveAll(dir)
+			assert.NoError(t, err)
+		}
+	}()
+
+	dir, err := ioutil.TempDir(testDataLocation, testRunName)
+	tmpDirs = append(tmpDirs, dir)
+	assert.NoError(t, err)
+	copy := filepath.Join(dir, "copy")
+
+	err = CopyFile(original, copy)
+	assert.True(t, err != nil)
+}
+
+func TestCopyFileMissingDest(t *testing.T) {
+	testDataLocation := "../../test/"
+	testRunName := "run-copyfile"
+	original := filepath.Join(testDataLocation, "files", "original")
+
+	// Create a temporary directory for testing and ensure it is cleaned up after
+	tmpDirs := make([]string, 0)
+	defer func() {
+		for _, dir := range tmpDirs {
+			err := os.RemoveAll(dir)
+			assert.NoError(t, err)
+		}
+	}()
+
+	dir, err := ioutil.TempDir(testDataLocation, testRunName)
+	tmpDirs = append(tmpDirs, dir)
+	assert.NoError(t, err)
+	copy := filepath.Join(dir, "missing", "copy")
+
+	err = CopyFile(original, copy)
+	assert.True(t, err != nil)
+}
+
 func TestFileExists(t *testing.T) {
 	assert.True(t, FileExists("../../test/files/original"))
 	assert.False(t, FileExists("../../test/files/pinkelephant"))

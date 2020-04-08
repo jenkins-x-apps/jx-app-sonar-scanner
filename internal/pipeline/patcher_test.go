@@ -4,10 +4,11 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
-	// "github.com/jenkins-x-apps/jx-app-sonar-scanner/internal/util"
-	"github.com/jenkins-x/jx/pkg/util"
+
+	jxutil "github.com/jenkins-x/jx/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/udhos/equalfile"
 )
@@ -71,7 +72,7 @@ func TestPatcher_ConfigurePipeline(t *testing.T) {
 			tmpDirs = append(tmpDirs, dir)
 			assert.NoError(t, err)
 			dataTemplateLocation := filepath.Join(testDataLocation, tt.name)
-			err = util.CopyDir(dataTemplateLocation, dir, true)
+			err = jxutil.CopyDir(dataTemplateLocation, dir, true)
 			assert.NoError(t, err)
 
 			e := &Patcher{
@@ -126,6 +127,38 @@ func Test_indexOfEndOfPipeline(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("indexOfEndOfPipeline() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPatcher_getUserOverrides(t *testing.T) {
+	tests := []struct {
+		name  string
+		want  UserOverrides
+		file  string
+		isErr bool
+	}{
+		{"good", UserOverrides{
+			Verbose:     true,
+			Skip:        false,
+			PullRequest: BuildStep{Stage: "ci", Step: "make-build"},
+			Release:     BuildStep{Stage: "release", Step: "make-release"},
+		}, "good.yaml", false},
+		{"broken", UserOverrides{}, "broken.yaml", true},
+		{"absent", UserOverrides{}, "absent.yaml", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := &Patcher{
+				sourceDir: "../../test/user-properties/",
+			}
+			got, err := e.getUserOverrides(tt.file)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Patcher.getUserOverrides() got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(err != nil, tt.isErr) {
+				t.Errorf("Patcher.getUserOverrides() got1 = %v, want %v", err, tt.isErr)
 			}
 		})
 	}

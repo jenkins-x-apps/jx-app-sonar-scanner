@@ -1,0 +1,9 @@
+---
+verbose: true
+skip: false
+pullRequest:
+    stage: ci
+    step: make-build
+release:
+    stage: release
+    step: make-release
