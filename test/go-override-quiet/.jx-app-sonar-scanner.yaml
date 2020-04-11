@@ -1,0 +1,7 @@
+---
+pullRequest:
+    stage: build
+    step: build-container-build
+release:
+    stage: build
+    step: build-container-create

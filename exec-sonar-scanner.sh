@@ -7,7 +7,8 @@ s) export SONARQUBE_SERVER=${OPTARG};;
 k) export SONAR_TOKEN=${OPTARG};;
 r) export SCAN_ON_RELEASE=${OPTARG};;
 p) export SCAN_ON_PREVIEW=${OPTARG};;
-*) echo "usage: $0 [-s server] [-k token] [-r] [-p]"
+v) export SCANNER_VERBOSE=${OPTARG};;
+*) echo "usage: $0 [-s server] [-k token] [-r] [-p] [-v]"
 esac
 done
 
@@ -22,15 +23,19 @@ fi
 if [[ ${IS_RELEASE_PIPELINE} == "true" ]] ; then
     echo "Detected Release pipeline";
 fi
-env
-ls -laR
-
+if [[ ${SCANNER_VERBOSE} == "true" ]] ; then
+    env
+    ls -laR
+fi
 if [[ -f "sonar-project.properties" ]]; then
     echo "Using sonar-project.properties file from project source app=jx-app-sonar-scanner sonarscanproperties=true"
 fi
 if [[ ! -f "sonar-project.properties" ]]; then
     echo "Setting up default sonar-project.properties file for buildpack ${BUILDPACK_NAME}"
     cp "/sqproperties/${BUILDPACK_NAME}.sonar-project.properties" sonar-project.properties || true
+fi
+if [[ ${SCANNER_VERBOSE} == "true" ]] && [ -f "sonar-project.properties" ]; then
+    cat sonar-project.properties
 fi
 
 # Only activate in preview builds or the first stage of a release

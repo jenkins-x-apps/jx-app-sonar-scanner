@@ -25,3 +25,25 @@ You will be asked for:
 ## Uninstall
 You can uninstall using `jx delete app jx-app-sonar-scanner`
 
+## Additional Configuration
+You will need a configured instance of a Sonarqube server.
+
+You can provide Sonarqube related properties to the scanner by including an appropriately configured `sonar-project.properties` file in the root of your project folder.
+
+In addition, you can alter the configuration of the scanner within the Jenkins-X pipeline by providing a `.jx-app-sonar-scanner.yaml` file in the root of your project folder.
+
+This should be of the form:
+
+```yaml
+---
+verbose: true
+skip: false
+pullRequest:
+    stage: build
+    step: build-container-build
+release:
+    stage: build
+    step: build-container-create
+```
+
+Where `verbose` turns on logging within the pipeline. `skip` causes scanning to be skipped for this project. `pullRequest` and `release` specify the pipeline, stage and step AFTER which you wish to insert the scan operation.

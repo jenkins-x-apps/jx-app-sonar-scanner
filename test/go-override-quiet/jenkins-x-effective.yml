@@ -13,8 +13,6 @@ pipelineConfig:
         options:
           containerOptions:
             env:
-            - name: BUILDPACK_NAME
-              value: go
             - name: DOCKER_CONFIG
               value: /home/jenkins/.docker/
             - name: DOCKER_REGISTRY
@@ -75,15 +73,6 @@ pipelineConfig:
             dir: /workspace/source
             image: gcr.io/kaniko-project/executor:9912ccbf8d22bbafbf971124600fbb0b13b9cbd6
             name: build-container-build
-          - command: /usr/local/bin/exec-sonar-scanner.sh
-            args:
-            - -s http://jx-sonarqube.sonarqube.svc.cluster.local:9000
-            - -k 12345
-            - -r true
-            - -p true
-            - -v true
-            image: gcr.io/jx-mar19/jx-app-sonar-scanner:0.0.0-unset
-            name: sonar-scanner
           - command: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:$PREVIEW_VERSION
             dir: /workspace/source
             image: go
@@ -101,8 +90,6 @@ pipelineConfig:
         options:
           containerOptions:
             env:
-            - name: BUILDPACK_NAME
-              value: go
             - name: DOCKER_CONFIG
               value: /home/jenkins/.docker/
             - name: DOCKER_REGISTRY
@@ -167,15 +154,6 @@ pipelineConfig:
             dir: /workspace/source
             image: gcr.io/kaniko-project/executor:9912ccbf8d22bbafbf971124600fbb0b13b9cbd6
             name: build-container-create
-          - command: /usr/local/bin/exec-sonar-scanner.sh
-            args:
-            - -s http://jx-sonarqube.sonarqube.svc.cluster.local:9000
-            - -k 12345
-            - -r true
-            - -p true
-            - -v true
-            image: gcr.io/jx-mar19/jx-app-sonar-scanner:0.0.0-unset
-            name: sonar-scanner
           - command: jx step post build --image $DOCKER_REGISTRY/$ORG/$APP_NAME:${VERSION}
             dir: /workspace/source
             image: go

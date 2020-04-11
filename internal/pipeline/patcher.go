@@ -33,6 +33,7 @@ type Patcher struct {
 	apiKey        string
 	scanonpreview bool
 	scanonrelease bool
+	debug         bool
 }
 
 // UserOverrides represents a user supplied set of UserOverrides values
@@ -58,13 +59,12 @@ func NewPatcher(sourceDir string, context string, sqServer string, apiKey string
 		apiKey:        apiKey,
 		scanonpreview: scanonpreview,
 		scanonrelease: scanonrelease,
+		debug:         false,
 	}
 }
 
 // ConfigurePipeline configures the Jenkins-X pipeline.
 func (e *Patcher) ConfigurePipeline() error {
-	debug := false
-
 	log.SetFormatter(&log.TextFormatter{
 		ForceColors: true,
 	})
@@ -86,7 +86,7 @@ func (e *Patcher) ConfigurePipeline() error {
 	}
 
 	if userOverrides.Verbose {
-		debug = true
+		e.debug = true
 		log.SetLevel(log.DebugLevel)
 	}
 	if userOverrides.Skip {
@@ -108,7 +108,7 @@ func (e *Patcher) ConfigurePipeline() error {
 		return errors.Errorf("unable to open pipeline config '%s'", pipelineConfigPath)
 	}
 
-	if debug {
+	if e.debug {
 		dumpInput(content)
 	}
 
@@ -137,7 +137,7 @@ func (e *Patcher) ConfigurePipeline() error {
 		return errors.Wrap(err, "unable to write modified project config")
 	}
 
-	if debug {
+	if e.debug {
 		dumpOutput(pipelineConfigPath)
 	}
 	return nil
@@ -377,6 +377,9 @@ func (e *Patcher) createApplicationStep(indent int) []string {
 	}
 	args = append(args, "-r "+strconv.FormatBool(e.scanonrelease))
 	args = append(args, "-p "+strconv.FormatBool(e.scanonpreview))
+	if e.debug {
+		args = append(args, "-v "+strconv.FormatBool(e.debug))
+	}
 
 	// construct the pipeline syntax for the step
 	step := []string{}

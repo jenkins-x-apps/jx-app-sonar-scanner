@@ -48,6 +48,7 @@ func TestPatcher_ConfigurePipeline(t *testing.T) {
 		{"go-no-token", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "", true, true}, false},
 		{"go-no-server", fields{"", "", "12345", true, true}, false},
 		{"go-override", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
+		{"go-override-quiet", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
 		{"go-skip", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
 		{"gradle", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
 		{"javascript", fields{"", "http://jx-sonarqube.sonarqube.svc.cluster.local:9000", "12345", true, true}, false},
@@ -82,6 +83,7 @@ func TestPatcher_ConfigurePipeline(t *testing.T) {
 				apiKey:        tt.fields.apiKey,
 				scanonpreview: tt.fields.scanonpreview,
 				scanonrelease: tt.fields.scanonrelease,
+				debug:         false,
 			}
 			if err := e.ConfigurePipeline(); (err != nil) != tt.wantErr {
 				t.Errorf("Patcher.ConfigurePipeline() error = %v, wantErr %v", err, tt.wantErr)
