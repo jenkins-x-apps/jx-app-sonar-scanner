@@ -78,7 +78,7 @@ pipelineConfig:
                 command: /kaniko/executor
                 args:
                   - --dockerfile=/workspace/source/Dockerfile
-                  - --destination=gcr.io/jx-mar19/jx-app-sonar-scanner:${inputs.params.version}
-                  - --destination=gcr.io/jx-mar19/jx-app-sonar-scanner:latest
+                  - --destination=gcr.io/jenkinsxio/jx-app-sonar-scanner:${inputs.params.version}
+                  - --destination=gcr.io/jenkinsxio/jx-app-sonar-scanner:latest
                   - --context=/workspace/source
 
