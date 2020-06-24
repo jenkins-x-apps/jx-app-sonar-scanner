@@ -36,7 +36,7 @@ require (
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.0.0-20190718062839-c8a0b81cb10e // indirect
 	k8s.io/apimachinery v0.0.0-20190717022731-0bb8574e0887 // indirect
-	k8s.io/client-go v11.0.0+incompatible // indirect
+	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 )
 
 replace github.com/heptio/sonobuoy => github.com/jenkins-x/sonobuoy v0.11.7-0.20190318120422-253758214767
@@ -47,7 +47,7 @@ replace k8s.io/metrics => k8s.io/metrics v0.0.0-20181128195641-3954d62a524d
 
 replace k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190122181752-bebe27e40fb7
 
-replace k8s.io/client-go => k8s.io/client-go v2.0.0-alpha.0.0.20190115164855-701b91367003+incompatible
+replace k8s.io/client-go => k8s.io/client-go v0.0.0-20190528110200-4f3abb12cae2
 
 replace k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20181128195303-1f84094d7e8e
 
