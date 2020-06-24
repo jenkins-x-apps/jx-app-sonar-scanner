@@ -6,8 +6,7 @@ require (
 	github.com/antham/gommit v2.2.0+incompatible // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/dlclark/regexp2 v1.2.0 // indirect
-	github.com/jenkins-x/jx v1.3.1119
-	github.com/jenkins-x/jx/v2 v2.1.83
+	github.com/jenkins-x/jx/v2 v2.1.84
 	github.com/magiconair/properties v1.8.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
