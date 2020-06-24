@@ -3,7 +3,7 @@ OS := $(shell uname | tr '[:upper:]' '[:lower:]')
 
 GO_VARS := GO111MODULE=on GO15VENDOREXPERIMENT=1 CGO_ENABLED=0
 REV := $(shell git rev-parse --short HEAD 2> /dev/null || echo 'unknown')
-IMAGE ?= gcr.io/jx-mar19/jx-app-sonar-scanner
+IMAGE ?= gcr.io/jenkinsxio/jx-app-sonar-scanner
 VERSION ?= 0.0.0-dev-$(REV)
 BUILDFLAGS := '-X github.com/jenkins-x-apps/jx-app-sonar-scanner/internal/version.binaryVersion=$(VERSION) -X github.com/jenkins-x-apps/jx-app-sonar-scanner/internal/version.imageName=$(IMAGE)'
 

@@ -5,7 +5,7 @@ build:
     envTemplate:
       template: "{{.DOCKER_REGISTRY}}/{{.IMAGE_NAME}}:{{.VERSION}}"
   artifacts:
-  - imageName: tdcox/jx-app-sonar-scanner
+  - imageName: jenkinsxio/jx-app-sonar-scanner
     workspace: .
     docker: {}
   local: {}
@@ -19,7 +19,7 @@ profiles:
       envTemplate:
         template: "{{.DOCKER_REGISTRY}}/{{.IMAGE_NAME}}:{{.DIGEST_HEX}}"
     artifacts:
-    - imageName: tdcox/jx-app-sonar-scanner
+    - imageName: jenkinsxio/jx-app-sonar-scanner
   deploy:
     helm:
       releases:
