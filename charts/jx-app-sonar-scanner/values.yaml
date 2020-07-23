@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 image:
   repo: gcr.io/jenkinsxio/jx-app-sonar-scanner
-  tag: latest
+  tag: 0.0.51
 sqServer: "{{ .Values.sqServer }}"
 apiKey: "{{ .Values.apiKey }}"
 scanonpreview: "{{ .Values.scanonpreview }}"
