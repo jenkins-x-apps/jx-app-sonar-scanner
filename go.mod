@@ -3,6 +3,7 @@ module github.com/jenkins-x-apps/jx-app-sonar-scanner
 go 1.12
 
 require (
+	github.com/GeertJohan/fgt v0.0.0-20160120143236-262f7b11eec0 // indirect
 	github.com/antham/gommit v2.2.0+incompatible // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/dlclark/regexp2 v1.2.0 // indirect

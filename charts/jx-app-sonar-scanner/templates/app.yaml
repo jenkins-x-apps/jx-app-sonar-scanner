@@ -8,7 +8,7 @@ metadata:
 spec:
     pipelineExtension:
         name: SonarScanner
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        image: "{{ .Values.image.repo }}:{{ .Values.image.tag }}"
         command: /jx-app-sonar-scanner
         args:
             - configure
